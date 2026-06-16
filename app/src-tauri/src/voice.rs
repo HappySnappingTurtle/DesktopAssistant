@@ -104,25 +104,12 @@ pub fn voice_start_recording(state: tauri::State<'_, RecorderState>) -> Result<(
     Ok(())
 }
 
-fn whisper_model_path() -> std::path::PathBuf {
-    dirs_home()
-        .join(".desktop-assistant")
-        .join("models")
-        .join("ggml-base-q5_1.bin")
-}
-
-fn dirs_home() -> std::path::PathBuf {
-    std::env::var_os("HOME")
-        .map(Into::into)
-        .unwrap_or_else(|| "/tmp".into())
-}
-
 pub fn transcribe_wav(wav: &std::path::Path) -> Result<String, String> {
-    let model = whisper_model_path();
+    let model = crate::paths::whisper_model_path();
     if !model.exists() {
         return Err(format!("whisper 模型缺失: {}", model.display()));
     }
-    let out = std::process::Command::new("whisper-cli")
+    let out = std::process::Command::new(crate::paths::whisper_bin())
         .args(["-m"])
         .arg(&model)
         .args(["-l", "zh", "-nt", "-np", "-f"])

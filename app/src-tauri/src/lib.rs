@@ -2,6 +2,7 @@ pub mod agent;
 mod commands;
 pub mod config;
 pub mod llm;
+pub mod paths;
 pub mod tts;
 mod tray;
 pub mod voice;
@@ -126,21 +127,23 @@ fn set_ptt_shortcut(app: tauri::AppHandle, shortcut_str: String) -> Result<Strin
 
 #[tauri::command]
 fn get_ptt_shortcut() -> String {
+    let default = if cfg!(target_os = "windows") { "Ctrl+Space" } else { "Alt+Space" };
     let cfg = crate::config::get_config();
     cfg["ptt_shortcut"]
         .as_str()
-        .unwrap_or("Alt+Space")
+        .unwrap_or(default)
         .to_string()
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // 读取保存的快捷键，默认 Alt+Space
+    let default_shortcut = if cfg!(target_os = "windows") { "Ctrl+Space" } else { "Alt+Space" };
     let saved = {
         let cfg = config::get_config();
         cfg["ptt_shortcut"]
             .as_str()
-            .unwrap_or("Alt+Space")
+            .unwrap_or(default_shortcut)
             .to_string()
     };
     let ptt = parse_shortcut(&saved).unwrap_or_else(|_| Shortcut::new(Some(Modifiers::ALT), Code::Space));

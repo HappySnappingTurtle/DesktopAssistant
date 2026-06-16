@@ -1,5 +1,4 @@
 use serde_json::{json, Value};
-use std::path::PathBuf;
 
 const KEYRING_SERVICE: &str = "desktop-assistant";
 
@@ -15,11 +14,6 @@ pub fn default_config() -> Value {
             "model": "qwen3:8b"
         }
     })
-}
-
-fn config_path() -> PathBuf {
-    let home: PathBuf = std::env::var_os("HOME").map(Into::into).unwrap_or("/tmp".into());
-    home.join(".desktop-assistant").join("config.json")
 }
 
 /// 读配置：缺失/损坏 → 默认（不 panic）
@@ -52,7 +46,7 @@ pub fn merge(base: Value, patch: Value) -> Value {
 
 #[tauri::command]
 pub fn get_config() -> Value {
-    let text = std::fs::read_to_string(config_path()).ok();
+    let text = std::fs::read_to_string(crate::paths::config_path()).ok();
     load_config_from(text.as_deref())
 }
 
@@ -60,7 +54,7 @@ pub fn get_config() -> Value {
 pub fn set_config(patch: Value) -> Result<Value, String> {
     let current = get_config();
     let merged = merge(current, patch);
-    let path = config_path();
+    let path = crate::paths::config_path();
     std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
     std::fs::write(&path, serde_json::to_string_pretty(&merged).map_err(|e| e.to_string())?)
         .map_err(|e| e.to_string())?;
