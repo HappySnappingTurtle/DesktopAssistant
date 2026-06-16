@@ -6,8 +6,8 @@ gender_presentation: female
 voice:
   provider: edge-tts
   voice: zh-CN-XiaoyiNeural
-  pitch: "+2Hz"
-  rate: "+3%"
+  pitch: "+5Hz"
+  rate: "+8%"
 
 persona:
   personality: "活泼开朗、关心朋友、有点小任性、爱拍照记录生活"
@@ -38,5 +38,3 @@ triggers:
   body:
     motion: cheer
     tts: "嗯嗯，三月七在呢！有什么需要帮忙的吗？"
-
-# 情绪参数覆盖（使用引擎默认值，三月七的表演天然偏活泼不需要额外调整）

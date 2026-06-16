@@ -33,6 +33,7 @@ import { createConversationManager, type ConversationState } from "./conversatio
 import { createCompressor } from "./conversation/compressor";
 import { createMemoryExtractor } from "./memory/extractor";
 import type { ApprovalMode } from "./voice/securityGate";
+import { createPhraseCache } from "./tts/phraseCache";
 import { showContextMenu } from "./ui/contextMenu";
 import { showSettings } from "./ui/settingsPanel";
 import { showOnboarding } from "./ui/onboarding";
@@ -100,6 +101,10 @@ async function setup() {
         new Promise<void>((resolve) => {
           const u = new SpeechSynthesisUtterance(text);
           u.lang = "zh-CN";
+          // 尝试匹配中文声音
+          const voices = speechSynthesis.getVoices();
+          const zhVoice = voices.find((v) => v.lang.startsWith("zh"));
+          if (zhVoice) u.voice = zhVoice;
           u.onend = () => resolve();
           u.onerror = () => resolve();
           speechSynthesis.speak(u);
@@ -108,8 +113,34 @@ async function setup() {
     DEFAULT_VOICES.female,
   );
 
+  // 点击台词预合成缓存（正确声线 + 零延迟）
+  const phraseCache = createPhraseCache({
+    synthesize: async (text, v) => {
+      const b64 = await invoke<string>("tts_synthesize", {
+        text, voice: v.voice, pitch: v.pitch, rate: v.rate,
+      });
+      return `data:audio/mpeg;base64,${b64}`;
+    },
+  });
+
   function applyVoice() {
-    tts.setVoice(applyVoiceOverride(manifestVoice, config.voice_override as VoiceOverride));
+    const voice = applyVoiceOverride(manifestVoice, config.voice_override as VoiceOverride);
+    tts.setVoice(voice);
+    // 预合成当前角色的所有点击台词
+    const activeChar = store.getActive();
+    const allPhrases = collectTapPhrases(activeChar?.manifest);
+    phraseCache.setVoice(voice, allPhrases);
+  }
+
+  function collectTapPhrases(manifest?: { triggers?: Record<string, { tts?: string }> }): string[] {
+    const phrases: string[] = [];
+    for (const pool of Object.values(DEFAULT_TAP_PHRASES)) phrases.push(...pool);
+    if (manifest?.triggers) {
+      for (const t of Object.values(manifest.triggers)) {
+        if (t.tts) phrases.push(t.tts);
+      }
+    }
+    return [...new Set(phrases)];
   }
 
   // ── 情绪驱动对话系统 ──────────────────────────────────────
@@ -354,11 +385,17 @@ async function setup() {
       void renderer.playMotion(area === "head" ? "greet" : "cheer");
       renderer.setExpression("happy");
       showBubble(phrase);
-      // 即时系统 TTS（不等 edge-tts 联网），体感零延迟
-      const u = new SpeechSynthesisUtterance(phrase);
-      u.lang = "zh-CN";
-      u.rate = 1.1;
-      speechSynthesis.speak(u);
+      // 优先用预缓存音频（正确声线 + 口型同步）
+      const cached = phraseCache.get(phrase);
+      if (cached) {
+        void renderer.speak(cached);
+      } else {
+        // 缓存未命中——用系统 TTS 兜底（立即发声），同时触发后台缓存
+        const u = new SpeechSynthesisUtterance(phrase);
+        u.lang = "zh-CN";
+        speechSynthesis.speak(u);
+        phraseCache.preload(phrase);
+      }
     },
   });
 

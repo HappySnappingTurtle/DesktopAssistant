@@ -12,8 +12,8 @@ persona:
 
 voice:
   provider: edge-tts
-  voice: zh-CN-XiaoyiNeural
-  pitch: "+0Hz"
+  voice: zh-CN-XiaoxiaoNeural
+  pitch: "+2Hz"
   rate: "+0%"
 
 motion_map:
