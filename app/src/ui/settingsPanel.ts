@@ -34,7 +34,9 @@ export async function showSettings(deps: SettingsDeps) {
   const cfg = await deps.getConfig();
   const llm = (cfg.llm ?? {}) as Record<string, string>;
   const vo = (cfg.voice_override ?? {}) as Record<string, unknown>;
-  const hasKey = await deps.hasSecret("llm_api_key");
+  // 不在打开面板时检查 Keychain（避免触发密码弹窗）
+  // hasSecret 延迟到用户展开 LLM 段时才调用
+  let hasKey: boolean | null = null; // null=未检查
   let pttShortcut = "Alt+Space";
   try { pttShortcut = await deps.getPttShortcut(); } catch (e) { console.warn("[settings] getPttShortcut:", e); }
   const up = (cfg.user_profile ?? {}) as Record<string, string>;
@@ -69,8 +71,9 @@ export async function showSettings(deps: SettingsDeps) {
       ${field("自定义 Prompt 补充（高级，可选）", `<textarea id="st-prompt-extra" style="${inputStyle}height:60px;resize:vertical;" placeholder="追加到 system prompt 末尾，如：回复用英文 / 不要用敬语">${up.system_prompt_extra ?? ""}</textarea>`)}
     </fieldset>
 
-    <fieldset style="border:1px solid #333;border-radius:10px;margin:10px 0;padding:8px 12px">
-      <legend style="color:#8ab">LLM 模型</legend>
+    <details id="st-llm-details" style="border:1px solid #333;border-radius:10px;margin:10px 0;padding:8px 12px">
+      <summary style="color:#8ab;cursor:pointer;user-select:none;padding:2px 0">LLM 模型（点击展开修改）</summary>
+      <div style="margin-top:8px">
       ${field("Provider", `<select id="st-provider" style="${inputStyle}">
         <option value="openai-compatible">OpenAI 兼容（含 Ollama /v1）</option>
         <option value="anthropic">Anthropic</option>
@@ -78,9 +81,10 @@ export async function showSettings(deps: SettingsDeps) {
       </select>`)}
       ${field("Base URL", `<input id="st-baseurl" style="${inputStyle}" value="${llm.base_url ?? ""}">`)}
       ${field("模型名", `<input id="st-model" style="${inputStyle}" value="${llm.model ?? ""}">`)}
-      ${field(`API Key（${hasKey ? "已保存，留空则不变" : "未设置"}）`,
-        `<input id="st-key" type="password" style="${inputStyle}" placeholder="${hasKey ? "••••••••" : "sk-..."}">`)}
-    </fieldset>
+      ${field(`API Key <span id="st-key-status" style="color:#777">（展开时检查状态…）</span>`,
+        `<input id="st-key" type="password" style="${inputStyle}" placeholder="sk-...">`)}
+      </div>
+    </details>
 
     <fieldset style="border:1px solid #333;border-radius:10px;margin:10px 0;padding:8px 12px">
       <legend style="color:#8ab">语音</legend>
@@ -167,6 +171,22 @@ export async function showSettings(deps: SettingsDeps) {
     const ev = e as PointerEvent;
     if (ev.button !== 0) return;
     void getCurrentWindow().startDragging();
+  });
+
+  // LLM 段展开时才检查 Keychain（避免无关操作触发密码弹窗）
+  panel.querySelector("#st-llm-details")!.addEventListener("toggle", async (e) => {
+    const details = e.target as HTMLDetailsElement;
+    if (details.open && hasKey === null) {
+      try {
+        hasKey = await deps.hasSecret("llm_api_key");
+      } catch {
+        hasKey = false;
+      }
+      const status = panel!.querySelector("#st-key-status");
+      const keyInput = panel!.querySelector("#st-key") as HTMLInputElement;
+      if (status) status.textContent = hasKey ? "（已保存，留空则不变）" : "（未设置）";
+      if (keyInput) keyInput.placeholder = hasKey ? "••••••••" : "sk-...";
+    }
   });
 
   // 快捷键录制
