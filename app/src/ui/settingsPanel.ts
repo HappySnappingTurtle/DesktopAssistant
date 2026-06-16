@@ -112,8 +112,11 @@ export async function showSettings(deps: SettingsDeps) {
 
     <fieldset style="border:1px solid #333;border-radius:10px;margin:10px 0;padding:8px 12px">
       <legend style="color:#8ab">快捷键</legend>
-      ${field("语音输入（按住说话）", `<input id="st-ptt" style="${inputStyle}" value="${pttShortcut}" placeholder="Alt+Space">`)}
-      <div style="color:#777;font-size:12px;margin-top:4px">格式：修饰键+按键，如 Alt+Space、Ctrl+Shift+K、Cmd+J</div>
+      ${field("语音输入（按住说话）", `<div style="display:flex;gap:8px;align-items:center">
+        <input id="st-ptt" style="${inputStyle}flex:1;" value="${pttShortcut}" readonly placeholder="点击后按下快捷键">
+        <button id="st-ptt-record" style="padding:6px 12px;border-radius:8px;border:1px solid #555;background:transparent;color:#8cf;cursor:pointer;white-space:nowrap;font-size:13px">录制</button>
+      </div>`)}
+      <div id="st-ptt-hint" style="color:#777;font-size:12px;margin-top:4px">点击「录制」后按下你想用的快捷键组合</div>
     </fieldset>
 
     <fieldset style="border:1px solid #333;border-radius:10px;margin:10px 0;padding:8px 12px">
@@ -166,6 +169,77 @@ export async function showSettings(deps: SettingsDeps) {
     void getCurrentWindow().startDragging();
   });
 
+  // 快捷键录制
+  {
+    const pttInput = panel.querySelector("#st-ptt") as HTMLInputElement;
+    const recordBtn = panel.querySelector("#st-ptt-record") as HTMLElement;
+    const hint = panel.querySelector("#st-ptt-hint") as HTMLElement;
+    let recording = false;
+
+    function keyToName(e: KeyboardEvent): string | null {
+      const map: Record<string, string> = {
+        " ": "Space", Enter: "Enter", Tab: "Tab", Escape: "Escape", Backspace: "Backspace",
+      };
+      if (map[e.key]) return map[e.key];
+      if (e.code.startsWith("Key")) return e.code.slice(3);
+      if (e.code.startsWith("Digit")) return e.code.slice(5);
+      if (e.key.length === 1) return e.key.toUpperCase();
+      return null;
+    }
+
+    function handleKey(e: KeyboardEvent) {
+      e.preventDefault();
+      e.stopPropagation();
+      // 只按修饰键时不确认（等用户按主键）
+      if (["Alt", "Control", "Shift", "Meta"].includes(e.key)) {
+        const parts: string[] = [];
+        if (e.ctrlKey) parts.push("Ctrl");
+        if (e.altKey) parts.push("Alt");
+        if (e.shiftKey) parts.push("Shift");
+        if (e.metaKey) parts.push("Cmd");
+        hint.textContent = `已按下：${parts.join("+")}+...（再按一个主键确认）`;
+        hint.style.color = "#8cf";
+        return;
+      }
+      const parts: string[] = [];
+      if (e.ctrlKey) parts.push("Ctrl");
+      if (e.altKey) parts.push("Alt");
+      if (e.shiftKey) parts.push("Shift");
+      if (e.metaKey) parts.push("Cmd");
+      const keyName = keyToName(e);
+      if (!keyName) return;
+      parts.push(keyName);
+      pttInput.value = parts.join("+");
+      stopRecording();
+      hint.textContent = `✓ 已设置为 ${pttInput.value}`;
+      hint.style.color = "#7a7";
+    }
+
+    function stopRecording() {
+      recording = false;
+      recordBtn.textContent = "录制";
+      recordBtn.style.borderColor = "#555";
+      recordBtn.style.color = "#8cf";
+      window.removeEventListener("keydown", handleKey, true);
+    }
+
+    recordBtn.addEventListener("click", () => {
+      if (recording) {
+        stopRecording();
+        hint.textContent = "点击「录制」后按下你想用的快捷键组合";
+        hint.style.color = "#777";
+        return;
+      }
+      recording = true;
+      recordBtn.textContent = "取消";
+      recordBtn.style.borderColor = "#f55";
+      recordBtn.style.color = "#f88";
+      hint.textContent = "⏺ 请按下快捷键组合...（如 Alt+Space）";
+      hint.style.color = "#fc0";
+      window.addEventListener("keydown", handleKey, true);
+    });
+  }
+
   // Hook 安装按钮
   panel.querySelector("#st-install-hook")!.addEventListener("click", async () => {
     const dir = (panel!.querySelector("#st-hookdir") as HTMLInputElement).value.trim();
@@ -212,17 +286,42 @@ export async function showSettings(deps: SettingsDeps) {
     const newPtt = v("#st-ptt");
     const topmost = checked("#st-topmost");
     patch.always_visible = topmost;
+    const errors: string[] = [];
     try {
       if (key) await deps.setSecret("llm_api_key", key);
-      if (newPtt && newPtt !== pttShortcut) {
+    } catch (e) {
+      errors.push("API Key 保存失败: " + String(e));
+    }
+    if (newPtt && newPtt !== pttShortcut) {
+      try {
         await deps.setPttShortcut(newPtt);
+      } catch (e) {
+        errors.push("快捷键设置失败: " + String(e));
       }
+    }
+    try {
       await deps.setAlwaysVisible(topmost);
+    } catch (e) {
+      errors.push("窗口置顶设置失败: " + String(e));
+    }
+    try {
       const merged = (await deps.setConfig(patch)) as Record<string, unknown>;
       deps.onApplied(merged);
-      hideSettings();
     } catch (e) {
-      alert("保存失败：" + String(e));
+      errors.push("配置保存失败: " + String(e));
+    }
+    if (errors.length > 0) {
+      // 在面板内显示错误（而不是 alert——透明窗口里 alert 可能不可见）
+      let errEl = panel!.querySelector("#st-errors") as HTMLElement | null;
+      if (!errEl) {
+        errEl = document.createElement("div");
+        errEl.id = "st-errors";
+        errEl.style.cssText = "color:#f77;font-size:12px;margin-top:8px;padding:8px;background:rgba(200,50,50,.15);border-radius:8px;";
+        panel!.querySelector("#st-save")!.parentElement!.after(errEl);
+      }
+      errEl.textContent = errors.join("\n");
+    } else {
+      hideSettings();
     }
   });
 }
