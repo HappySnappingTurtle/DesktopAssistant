@@ -1,0 +1,52 @@
+# Dependencies
+app/node_modules/
+
+# Build output
+app/dist/
+app/src-tauri/target/
+*.dmg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env & secrets
+.env
+.env.*
+*.pem
+
+# Tauri generated
+app/src-tauri/gen/
+
+# User data
+config.json
+
+# Temp
+*.log
+
+# Large binary assets (download via scripts/download-models.sh)
+*.moc3
+app/public/characters/*/model/**/*.png
+app/public/vendor/*.js
+
+# Design docs (local only)
+*.设计文档.md
+*.用例文档.md
+*-设计文档.md
+*-用例文档.md
+TODOList.md
+进度记录.md
+使用说明.md
+00-*.md
+01-*.md
+T0*-*.md
+T1*-*.md
+LLM*.md
+角色记忆*.md

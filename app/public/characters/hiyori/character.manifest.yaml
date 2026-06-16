@@ -1,0 +1,34 @@
+schema_version: 1
+id: hiyori
+display_name: "Hiyori（开发用）"
+model_entry: model/Hiyori.model3.json
+gender_presentation: female
+
+persona:
+  personality: "温柔安静、细心体贴、偶尔害羞"
+  speech_style: "语气柔和，用词温暖简洁"
+  greeting: "你好呀，今天也要加油哦。"
+  taboos: "不喜欢大声说话"
+
+voice:
+  provider: edge-tts
+  voice: zh-CN-XiaoyiNeural
+  pitch: "+0Hz"
+  rate: "+0%"
+
+motion_map:
+  idle: Idle
+  greet: Tap
+  cheer: TapBody
+  alert: Flick
+  listen: Idle
+  think: Idle
+  error: FlickDown
+
+triggers:
+  head:
+    motion: greet
+    tts: "嗯？怎么了？"
+  body:
+    motion: cheer
+    tts: "我在呢，有什么事吗？"
