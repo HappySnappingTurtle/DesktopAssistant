@@ -40,6 +40,7 @@ export async function showSettings(deps: SettingsDeps) {
   let pttShortcut = "Alt+Space";
   try { pttShortcut = await deps.getPttShortcut(); } catch (e) { console.warn("[settings] getPttShortcut:", e); }
   const up = (cfg.user_profile ?? {}) as Record<string, string>;
+  const ttsConf = (cfg.tts ?? {}) as Record<string, string>;
   let hookEndpoint = "";
   try { hookEndpoint = await deps.getHookEndpoint(); } catch { /* not running */ }
   console.log("[settings] data loaded, ptt:", pttShortcut, "hook:", hookEndpoint);
@@ -104,6 +105,14 @@ export async function showSettings(deps: SettingsDeps) {
         <option value="auto">auto（禁用语音审批）</option>
         <option value="parrot">parrot（只播报不操作）</option>
       </select>`)}
+      <div style="border-top:1px solid #333;margin-top:10px;padding-top:8px">
+      ${field("TTS 引擎", `<select id="st-tts-provider" style="${inputStyle}">
+        <option value="edge-tts">Edge TTS（默认，联网，零配置）</option>
+        <option value="gpt-sovits">GPT-SoVITS（本地，需启动服务）</option>
+        <option value="cosyvoice">CosyVoice 2（本地，需 Docker + GPU）</option>
+      </select>`)}
+      ${field("TTS 服务地址（仅 GPT-SoVITS / CosyVoice）", `<input id="st-tts-url" style="${inputStyle}" value="${ttsConf.provider_url ?? ""}" placeholder="如 http://127.0.0.1:9880">`)}
+      </div>
     </fieldset>
 
     <fieldset style="border:1px solid #333;border-radius:10px;margin:10px 0;padding:8px 12px">
@@ -162,6 +171,8 @@ export async function showSettings(deps: SettingsDeps) {
     (vo.voice as string) ?? "zh-CN-XiaoyiNeural";
   (panel.querySelector("#st-mode") as HTMLSelectElement).value =
     (cfg.approval_mode as string) ?? "safe-list";
+  (panel.querySelector("#st-tts-provider") as HTMLSelectElement).value =
+    ttsConf.provider ?? "edge-tts";
   (panel.querySelector("#st-char") as HTMLSelectElement).value =
     (cfg.active_character as string) ?? deps.characters[0]?.id ?? "";
 
@@ -295,6 +306,10 @@ export async function showSettings(deps: SettingsDeps) {
       },
       muted: checked("#st-muted"),
       approval_mode: v("#st-mode"),
+      tts: {
+        provider: v("#st-tts-provider"),
+        provider_url: v("#st-tts-url"),
+      },
       active_character: v("#st-char"),
     };
     patch.user_profile = {

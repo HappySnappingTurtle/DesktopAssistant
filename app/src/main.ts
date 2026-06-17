@@ -88,11 +88,14 @@ async function setup() {
   const tts = createTTSManager(
     {
       synthesize: async (text, v: VoiceProfile) => {
+        const ttsConfig = (config.tts ?? {}) as Record<string, string>;
         const b64 = await invoke<string>("tts_synthesize", {
           text,
           voice: v.voice,
           pitch: v.pitch,
           rate: v.rate,
+          provider: ttsConfig.provider ?? null,
+          providerUrl: ttsConfig.provider_url ?? null,
         });
         return `data:audio/mpeg;base64,${b64}`;
       },
