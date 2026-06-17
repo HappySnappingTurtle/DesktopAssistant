@@ -1,20 +1,25 @@
 schema_version: 1
 id: hiyori
-display_name: "Hiyori（开发用）"
+display_name: "Hiyori"
 model_entry: model/Hiyori.model3.json
 gender_presentation: female
 
 persona:
-  personality: "温柔安静、细心体贴、偶尔害羞"
-  speech_style: "语气柔和，用词温暖简洁"
+  personality: "温柔安静、细心体贴、偶尔害羞、内心坚定"
+  speech_style: "语气柔和，用词温暖简洁，偶尔停顿思考"
   greeting: "你好呀，今天也要加油哦。"
   taboos: "不喜欢大声说话"
 
 voice:
   provider: edge-tts
   voice: zh-CN-XiaoxiaoNeural
-  pitch: "+2Hz"
-  rate: "+0%"
+  pitch: "+3Hz"
+  rate: "-5%"
+
+gpt_sovits:
+  ref_audio: /voice-refs/f3_hiyori_ref.mp3
+  ref_text: "嗯...你今天看起来有点累呢。要不要休息一下？我帮你泡杯茶吧，别太勉强自己了。"
+  ref_lang: zh
 
 motion_map:
   idle: Idle

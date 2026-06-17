@@ -40,7 +40,7 @@ import { showOnboarding } from "./ui/onboarding";
 
 Live2DModel.registerTicker(PIXI.Ticker as never);
 
-const BUILTIN_CHARACTERS = ["march7th", "natori", "hiyori"];
+const BUILTIN_CHARACTERS = ["garnet", "cybermaid", "hiyori", "suit", "freemale", "dk", "march7th", "natori"];
 
 /** 默认点击短语，manifest 里的 triggers.*.tts 可覆盖 */
 const DEFAULT_TAP_PHRASES: Record<string, string[]> = {
@@ -89,12 +89,20 @@ async function setup() {
     {
       synthesize: async (text, v: VoiceProfile) => {
         const ttsConfig = (config.tts ?? {}) as Record<string, string>;
+        const provider = ttsConfig.provider ?? "edge-tts";
+        let voiceOrRef = v.voice;
+        // GPT-SoVITS：用角色 manifest 的参考音频路径替代 voice name
+        if (provider === "gpt-sovits") {
+          const active = store.getActive();
+          const sovits = active?.manifest.gpt_sovits;
+          if (sovits?.ref_audio) voiceOrRef = sovits.ref_audio;
+        }
         const b64 = await invoke<string>("tts_synthesize", {
           text,
-          voice: v.voice,
+          voice: voiceOrRef,
           pitch: v.pitch,
           rate: v.rate,
-          provider: ttsConfig.provider ?? null,
+          provider: provider !== "edge-tts" ? provider : null,
           providerUrl: ttsConfig.provider_url ?? null,
         });
         return `data:audio/mpeg;base64,${b64}`;

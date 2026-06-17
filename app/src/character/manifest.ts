@@ -30,6 +30,11 @@ export interface CharacterManifest {
   sounds?: Record<string, string>;
   scale?: number;
   emotion_param_overrides?: Record<string, Record<string, number>>;
+  gpt_sovits?: {
+    ref_audio?: string;
+    ref_text?: string;
+    ref_lang?: string;
+  };
 }
 
 export interface ParseOk {
@@ -54,6 +59,7 @@ const KNOWN = new Set<string>([
   "sounds",
   "scale",
   "emotion_param_overrides",
+  "gpt_sovits",
   "default_name_cn",
   "default_name_en",
   "persona_card",
