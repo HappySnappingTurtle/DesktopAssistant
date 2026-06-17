@@ -1,7 +1,7 @@
 schema_version: 1
 id: freemale
 display_name: "邻家少年"
-model_entry: model/freemale.model3.json
+model_entry: model/VT_Dino.model3.json
 gender_presentation: male
 
 persona:

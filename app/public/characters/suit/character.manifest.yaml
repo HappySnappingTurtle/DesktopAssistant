@@ -1,7 +1,7 @@
 schema_version: 1
 id: suit
 display_name: "绅士（Suit）"
-model_entry: model/suit.model3.json
+model_entry: model/office_m.model3.json
 gender_presentation: male
 
 persona:

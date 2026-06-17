@@ -1,0 +1,29 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "VT_Dino.moc3",
+		"Textures": [
+			"VT_Dino.1024/texture_00.png",
+			"VT_Dino.1024/texture_01.png",
+			"VT_Dino.1024/texture_02.png",
+			"VT_Dino.1024/texture_03.png",
+			"VT_Dino.1024/texture_04.png",
+			"VT_Dino.1024/texture_05.png",
+			"VT_Dino.1024/texture_06.png",
+			"VT_Dino.1024/texture_07.png"
+		],
+		"DisplayInfo": "VT_Dino.cdi3.json"
+	},
+	"Groups": [
+		{
+			"Target": "Parameter",
+			"Name": "LipSync",
+			"Ids": []
+		},
+		{
+			"Target": "Parameter",
+			"Name": "EyeBlink",
+			"Ids": []
+		}
+	]
+}

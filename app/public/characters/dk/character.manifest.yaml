@@ -1,7 +1,7 @@
 schema_version: 1
 id: dk
 display_name: "DK少年"
-model_entry: model/dk.model3.json
+model_entry: "model/Design_genius(1).model3.json"
 gender_presentation: male
 
 persona:

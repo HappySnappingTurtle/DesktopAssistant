@@ -1,7 +1,7 @@
 schema_version: 1
 id: cybermaid
 display_name: "CyberMaid"
-model_entry: model/cybermaid.model3.json
+model_entry: "model/Estella Belongs_to_DG_STUDIO_free.model3.json"
 gender_presentation: female
 
 persona:

@@ -40,7 +40,7 @@ import { showOnboarding } from "./ui/onboarding";
 
 Live2DModel.registerTicker(PIXI.Ticker as never);
 
-const BUILTIN_CHARACTERS = ["mao", "cybermaid", "hiyori", "suit", "freemale", "dk", "march7th", "natori"];
+const BUILTIN_CHARACTERS = ["mao", "cybermaid", "hiyori", "suit", "freemale", "dk"];
 
 /** 默认点击短语，manifest 里的 triggers.*.tts 可覆盖 */
 const DEFAULT_TAP_PHRASES: Record<string, string[]> = {

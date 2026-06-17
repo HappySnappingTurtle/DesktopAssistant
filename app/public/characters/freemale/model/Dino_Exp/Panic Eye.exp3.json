@@ -1,0 +1,20 @@
+{
+    "Type": "Live2D Expression",
+    "Parameters": [
+        {
+            "Id": "ParamPanic",
+            "Value": 1.0,
+            "Blend": "Add"
+        },
+        {
+            "Id": "ParamSparkle",
+            "Value": 0.0,
+            "Blend": "Add"
+        },
+        {
+            "Id": "ParamHighLightVis",
+            "Value": -1.0,
+            "Blend": "Add"
+        }
+    ]
+}
