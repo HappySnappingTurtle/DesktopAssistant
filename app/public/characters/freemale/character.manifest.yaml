@@ -17,18 +17,28 @@ voice:
   rate: "+0%"
 
 gpt_sovits:
-  ref_audio: /voice-refs/m2_free_ref.mp3
+  ref_audio: /voice-refs/freemale_ref.mp3
   ref_text: "嗯，没问题。这个事情交给我就好了，你先去忙你的，不用担心。回头给你消息。"
   ref_lang: zh
 
 motion_map:
   idle: Idle
-  greet: Tap
-  cheer: TapBody
-  alert: Flick
+  greet: Idle
+  cheer: Idle
+  alert: Idle
   listen: Idle
   think: Idle
-  error: Flick
+  error: Idle
+
+expression_map:
+  happy: Happy
+  excited: Happy
+  sad: Sad
+  worried: Pale
+  thinking: Sweating
+  angry: Angry
+  surprised: PanicEye
+  shy: Sweating
 
 triggers:
   head:

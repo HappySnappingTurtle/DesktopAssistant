@@ -91,11 +91,12 @@ async function setup() {
         const ttsConfig = (config.tts ?? {}) as Record<string, string>;
         const provider = ttsConfig.provider ?? "edge-tts";
         let voiceOrRef = v.voice;
-        // GPT-SoVITS：用角色 manifest 的参考音频路径替代 voice name
+        let promptText: string | null = null;
         if (provider === "gpt-sovits") {
           const active = store.getActive();
           const sovits = active?.manifest.gpt_sovits;
           if (sovits?.ref_audio) voiceOrRef = sovits.ref_audio;
+          if (sovits?.ref_text) promptText = sovits.ref_text;
         }
         const b64 = await invoke<string>("tts_synthesize", {
           text,
@@ -104,8 +105,10 @@ async function setup() {
           rate: v.rate,
           provider: provider !== "edge-tts" ? provider : null,
           providerUrl: ttsConfig.provider_url ?? null,
+          promptText,
         });
-        return `data:audio/mpeg;base64,${b64}`;
+        const mime = provider === "gpt-sovits" ? "audio/wav" : "audio/mpeg";
+        return `data:${mime};base64,${b64}`;
       },
       play: (url) => renderer?.speak(url) ?? Promise.resolve(),
       fallback: (text) =>
@@ -127,15 +130,30 @@ async function setup() {
   // 点击台词预合成缓存（正确声线 + 零延迟）
   const phraseCache = createPhraseCache({
     synthesize: async (text, v) => {
+      const ttsConfig = (config.tts ?? {}) as Record<string, string>;
+      const provider = ttsConfig.provider ?? "edge-tts";
+      let voiceOrRef = v.voice;
+      let promptText: string | null = null;
+      if (provider === "gpt-sovits") {
+        const active = store.getActive();
+        const sovits = active?.manifest.gpt_sovits;
+        if (sovits?.ref_audio) voiceOrRef = sovits.ref_audio;
+        if (sovits?.ref_text) promptText = sovits.ref_text;
+      }
       const b64 = await invoke<string>("tts_synthesize", {
-        text, voice: v.voice, pitch: v.pitch, rate: v.rate,
+        text, voice: voiceOrRef, pitch: v.pitch, rate: v.rate,
+        provider: provider !== "edge-tts" ? provider : null,
+        providerUrl: ttsConfig.provider_url ?? null,
+        promptText,
       });
-      return `data:audio/mpeg;base64,${b64}`;
+      const mime = provider === "gpt-sovits" ? "audio/wav" : "audio/mpeg";
+      return `data:${mime};base64,${b64}`;
     },
   });
 
   function applyVoice() {
-    const voice = applyVoiceOverride(manifestVoice, config.voice_override as VoiceOverride);
+    const ttsProvider = ((config.tts ?? {}) as Record<string, string>).provider ?? "edge-tts";
+    const voice = applyVoiceOverride(manifestVoice, config.voice_override as VoiceOverride, ttsProvider);
     tts.setVoice(voice);
     // 预合成当前角色的所有点击台词
     const activeChar = store.getActive();

@@ -12,7 +12,43 @@
 			"VT_Dino.1024/texture_06.png",
 			"VT_Dino.1024/texture_07.png"
 		],
-		"DisplayInfo": "VT_Dino.cdi3.json"
+		"Physics": "VT_Dino.physics3.json",
+		"DisplayInfo": "VT_Dino.cdi3.json",
+		"Expressions": [
+			{
+				"Name": "Happy",
+				"File": "Dino_Exp/Happy.exp3.json"
+			},
+			{
+				"Name": "Angry",
+				"File": "Dino_Exp/Angry.exp3.json"
+			},
+			{
+				"Name": "Sad",
+				"File": "Dino_Exp/Sad.exp3.json"
+			},
+			{
+				"Name": "Pale",
+				"File": "Dino_Exp/Pale.exp3.json"
+			},
+			{
+				"Name": "PanicEye",
+				"File": "Dino_Exp/Panic Eye.exp3.json"
+			},
+			{
+				"Name": "Sweating",
+				"File": "Dino_Exp/Sweating.exp3.json"
+			}
+		],
+		"Motions": {
+			"Idle": [
+				{
+					"File": "Dino_Exp/Tearing.motion3.json",
+					"FadeInTime": 0.5,
+					"FadeOutTime": 0.5
+				}
+			]
+		}
 	},
 	"Groups": [
 		{

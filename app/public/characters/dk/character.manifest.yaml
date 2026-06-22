@@ -19,18 +19,30 @@ voice:
   rate: "+3%"
 
 gpt_sovits:
-  ref_audio: /voice-refs/f4_white_ref.mp3
+  ref_audio: /voice-refs/dk_ref.mp3
   ref_text: "哼，你又来了。不是说想你了啦。有什么事就直说嘛，我又不会咬人的喵。"
   ref_lang: zh
 
 motion_map:
   idle: Idle
-  greet: Tap
-  cheer: TapBody
-  alert: Flick
+  greet: Idle
+  cheer: Idle
+  alert: Idle
   listen: Idle
   think: Idle
-  error: Flick
+  error: Idle
+
+expression_map:
+  happy: expression1
+  excited: expression2
+  sad: kuku
+  worried: expression3
+  thinking: expression5
+  neutral: "7"
+  curious: "8"
+  shy: expression9
+  surprised: "13"
+  angry: "14"
 
 triggers:
   head:

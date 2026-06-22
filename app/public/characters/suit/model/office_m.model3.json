@@ -77,41 +77,53 @@
 			}
 		],
 		"Motions": {
-			"": [
-				{
-					"File": "mtn/M01.motion3.json"
-				},
-				{
-					"File": "mtn/M02.motion3.json"
-				},
-				{
-					"File": "mtn/M03.motion3.json"
-				},
-				{
-					"File": "mtn/M04.motion3.json"
-				},
-				{
-					"File": "mtn/M05.motion3.json"
-				},
-				{
-					"File": "mtn/M06.motion3.json"
-				},
-				{
-					"File": "mtn/M07.motion3.json"
-				},
-				{
-					"File": "mtn/M08.motion3.json"
-				},
-				{
-					"File": "mtn/M09.motion3.json"
-				}
-			],
 			"Idle": [
 				{
 					"File": "mtn/W01.motion3.json"
 				},
 				{
 					"File": "mtn/W02.motion3.json"
+				}
+			],
+			"Greet": [
+				{
+					"File": "mtn/M01.motion3.json"
+				}
+			],
+			"Cheer": [
+				{
+					"File": "mtn/M02.motion3.json"
+				},
+				{
+					"File": "mtn/M03.motion3.json"
+				}
+			],
+			"Alert": [
+				{
+					"File": "mtn/M04.motion3.json"
+				}
+			],
+			"Listen": [
+				{
+					"File": "mtn/M05.motion3.json"
+				}
+			],
+			"Think": [
+				{
+					"File": "mtn/M06.motion3.json"
+				}
+			],
+			"Error": [
+				{
+					"File": "mtn/M07.motion3.json"
+				}
+			],
+			"TapBody": [
+				{
+					"File": "mtn/M08.motion3.json"
+				},
+				{
+					"File": "mtn/M09.motion3.json"
 				}
 			]
 		}
@@ -136,11 +148,11 @@
 	"HitAreas": [
 		{
 			"Id": "HitArea_Head",
-			"Name": ""
+			"Name": "Head"
 		},
 		{
 			"Id": "HitArea_Body",
-			"Name": ""
+			"Name": "Body"
 		}
 	]
 }

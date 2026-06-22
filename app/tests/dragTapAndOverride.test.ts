@@ -65,14 +65,34 @@ describe("applyVoiceOverride", () => {
     expect(applyVoiceOverride(base, undefined)).toEqual(base);
   });
 
-  it("enabled → overrides voice", () => {
+  it("enabled → overrides voice (edge-tts)", () => {
     const v = applyVoiceOverride(base, { enabled: true, voice: "zh-CN-YunjianNeural" });
     expect(v.voice).toBe("zh-CN-YunjianNeural");
-    expect(v.pitch).toBe(base.pitch); // 缺省回落
+    expect(v.pitch).toBe(base.pitch);
   });
 
-  it("enabled with all fields", () => {
+  it("enabled with all fields preserves profile provider", () => {
     const v = applyVoiceOverride(base, { enabled: true, voice: "V", pitch: "-1Hz", rate: "+9%" });
-    expect(v).toEqual({ provider: "edge-tts", voice: "V", pitch: "-1Hz", rate: "+9%" });
+    expect(v).toEqual({ provider: base.provider, voice: "V", pitch: "-1Hz", rate: "+9%" });
+  });
+
+  it("enabled but gpt-sovits provider → skip override, return manifest", () => {
+    const v = applyVoiceOverride(base, { enabled: true, voice: "X", pitch: "+0Hz", rate: "+0%" }, "gpt-sovits");
+    expect(v).toEqual(base);
+  });
+
+  it("enabled but cosyvoice provider → skip override, return manifest", () => {
+    const v = applyVoiceOverride(base, { enabled: true, voice: "X" }, "cosyvoice");
+    expect(v).toEqual(base);
+  });
+
+  it("enabled with edge-tts provider → override applies", () => {
+    const v = applyVoiceOverride(base, { enabled: true, voice: "Y" }, "edge-tts");
+    expect(v.voice).toBe("Y");
+  });
+
+  it("no ttsProvider arg → override applies (backwards compat)", () => {
+    const v = applyVoiceOverride(base, { enabled: true, voice: "Z" });
+    expect(v.voice).toBe("Z");
   });
 });

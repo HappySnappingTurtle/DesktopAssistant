@@ -105,6 +105,7 @@ export async function showSettings(deps: SettingsDeps) {
         <option value="auto">auto（禁用语音审批）</option>
         <option value="parrot">parrot（只播报不操作）</option>
       </select>`)}
+      <div id="st-vo-hint" style="color:#f90;font-size:12px;margin:4px 0;display:none">⚠ GPT-SoVITS / CosyVoice 的声线由角色参考音频决定，此覆盖仅对 Edge TTS 生效</div>
       <div style="border-top:1px solid #333;margin-top:10px;padding-top:8px">
       ${field("TTS 引擎", `<select id="st-tts-provider" style="${inputStyle}">
         <option value="edge-tts">Edge TTS（默认，联网，零配置）</option>
@@ -175,6 +176,20 @@ export async function showSettings(deps: SettingsDeps) {
     ttsConf.provider ?? "edge-tts";
   (panel.querySelector("#st-char") as HTMLSelectElement).value =
     (cfg.active_character as string) ?? deps.characters[0]?.id ?? "";
+
+  // TTS 引擎切换时更新声线覆盖提示
+  const voHint = panel.querySelector("#st-vo-hint") as HTMLElement;
+  const voCheckbox = panel.querySelector("#st-vo-on") as HTMLInputElement;
+  const ttsProviderSel = panel.querySelector("#st-tts-provider") as HTMLSelectElement;
+  function updateVoiceOverrideHint() {
+    const isEdgeTts = ttsProviderSel.value === "edge-tts";
+    voHint.style.display = isEdgeTts ? "none" : "block";
+    if (!isEdgeTts && voCheckbox.checked) {
+      voCheckbox.checked = false;
+    }
+  }
+  ttsProviderSel.addEventListener("change", updateVoiceOverrideHint);
+  updateVoiceOverrideHint();
 
   // 标题栏拖拽窗口
   const titlebar = panel.querySelector("#st-titlebar")!;

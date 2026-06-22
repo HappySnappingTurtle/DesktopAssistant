@@ -25,8 +25,8 @@ voice:
   rate: "-3%"
 
 gpt_sovits:
-  ref_audio: /voice-refs/m1_suit_ref.mp3
-  ref_text: "好的，我已经确认了所有数据。目前进展顺利，按计划推进即可。有任何问题随时联系我。"
+  ref_audio: /voice-refs/suit_ref.mp3
+  ref_text: "好的，数据已确认。按计划推进即可。"
   ref_lang: zh
 
 emotion_param_overrides:
@@ -41,15 +41,29 @@ emotion_param_overrides:
 
 motion_map:
   idle: Idle
-  greet: Tap
-  cheer: TapBody
-  alert: Flick
-  listen: Idle
-  think: Idle
-  error: Flick
+  greet: Greet
+  cheer: Cheer
+  alert: Alert
+  listen: Listen
+  think: Think
+  error: Error
+
+expression_map:
+  happy: exp_01
+  excited: exp_01
+  sad: exp_04
+  worried: exp_07
+  thinking: exp_03
+  neutral: exp_00
+  curious: exp_05
+  shy: exp_06
+  surprised: exp_08
+  angry: exp_02
 
 triggers:
   head:
+    motion: Greet
     tts: "...有事？"
   body:
+    motion: TapBody
     tts: "我在。说吧。"

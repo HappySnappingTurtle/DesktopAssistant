@@ -17,28 +17,30 @@ voice:
   rate: "+8%"
 
 gpt_sovits:
-  ref_audio: /voice-refs/f1_mao_ref.mp3
+  ref_audio: /voice-refs/mao_ref.mp3
   ref_text: "嘿！你好呀！今天天气真不错呢，要不要一起出去玩？我可是超级期待的！"
   ref_lang: zh
 
 motion_map:
   idle: Idle
-  greet: mtn_01
-  cheer: special_01
-  alert: mtn_03
-  listen: mtn_02
-  think: mtn_04
-  error: mtn_03
+  greet: Greet
+  cheer: Cheer
+  alert: Alert
+  listen: Listen
+  think: Think
+  error: Alert
 
 expression_map:
-  happy: exp_01
-  sad: exp_05
-  worried: exp_06
-  thinking: exp_04
-  neutral: exp_03
-  curious: exp_02
-  shy: exp_07
-  surprised: exp_08
+  happy: exp_02
+  excited: exp_04
+  sad: exp_03
+  worried: exp_08
+  thinking: exp_03
+  neutral: exp_01
+  curious: exp_07
+  shy: exp_06
+  surprised: exp_07
+  angry: exp_08
 
 triggers:
   head:

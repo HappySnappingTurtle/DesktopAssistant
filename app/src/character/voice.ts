@@ -7,7 +7,7 @@ export interface VoiceProfile {
   rate: string;
 }
 
-/** 与 TODOList D6 对齐：女=三月七声线，男=丹恒声线 */
+/** 默认声线回落：女=XiaoyiNeural（活泼），男=YunxiNeural（清朗） */
 export const DEFAULT_VOICES: { female: VoiceProfile; male: VoiceProfile } = {
   female: { provider: "edge-tts", voice: "zh-CN-XiaoyiNeural", pitch: "+2Hz", rate: "+3%" },
   male: { provider: "edge-tts", voice: "zh-CN-YunxiNeural", pitch: "+0Hz", rate: "+0%" },
@@ -22,11 +22,16 @@ export interface VoiceOverride {
   rate?: string;
 }
 
-/** 设置页「覆盖角色默认声线」：enabled 时覆盖 manifest 声线，字段缺省回落原 profile */
-export function applyVoiceOverride(profile: VoiceProfile, override?: VoiceOverride): VoiceProfile {
+/** 设置页「覆盖角色默认声线」：仅 Edge TTS 时生效；GPT-SoVITS/CosyVoice 由 manifest ref_audio 决定声线 */
+export function applyVoiceOverride(
+  profile: VoiceProfile,
+  override?: VoiceOverride,
+  ttsProvider?: string,
+): VoiceProfile {
   if (!override?.enabled) return profile;
+  if (ttsProvider && ttsProvider !== "edge-tts") return profile;
   return {
-    provider: "edge-tts",
+    provider: profile.provider,
     voice: override.voice || profile.voice,
     pitch: override.pitch || profile.pitch,
     rate: override.rate || profile.rate,

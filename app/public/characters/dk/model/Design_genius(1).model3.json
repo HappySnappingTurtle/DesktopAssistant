@@ -47,6 +47,14 @@
 				"File": "7.exp3.json"
 			},
 			{
+				"Name": "8",
+				"File": "8.exp3.json"
+			},
+			{
+				"Name": "kuku",
+				"File": "kuku.exp3.json"
+			},
+			{
 				"Name": "expression3",
 				"File": "10.exp3.json"
 			},
@@ -55,12 +63,24 @@
 				"File": "12.exp3.json"
 			},
 			{
+				"Name": "13",
+				"File": "13.exp3.json"
+			},
+			{
+				"Name": "14",
+				"File": "14.exp3.json"
+			},
+			{
+				"Name": "144",
+				"File": "144.exp3.json"
+			},
+			{
 				"Name": "expression9",
 				"File": "sy.exp3.json"
 			}
 		],
 		"Motions": {
-			"": [
+			"Idle": [
 				{
 					"File": "idle.motion3.json"
 				}

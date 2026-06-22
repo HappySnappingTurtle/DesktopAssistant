@@ -143,13 +143,15 @@ pub async fn tts_synthesize(
     intensity: Option<f32>,
     provider: Option<String>,
     provider_url: Option<String>,
+    prompt_text: Option<String>,
 ) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let provider = provider.as_deref().unwrap_or("edge-tts");
         let bytes = match provider {
             "gpt-sovits" => {
                 let url = provider_url.as_deref().unwrap_or("http://127.0.0.1:9880");
-                synthesize_gpt_sovits(&text, url, &voice)?
+                let pt = prompt_text.as_deref().unwrap_or("");
+                synthesize_gpt_sovits(&text, url, &voice, pt)?
             }
             "cosyvoice" => {
                 let url = provider_url.as_deref().unwrap_or("http://127.0.0.1:50000");
@@ -166,19 +168,45 @@ pub async fn tts_synthesize(
     .map_err(|e| e.to_string())?
 }
 
+/// 解析 ref_audio 路径：manifest 中的 `/voice-refs/xxx.mp3` → 绝对文件路径
+fn resolve_ref_audio_path(path: &str) -> String {
+    if path.starts_with('/') && !std::path::Path::new(path).exists() {
+        // 尝试解析为 public/ 下的资源（dev 模式从 src-tauri/ 运行）
+        let trimmed = path.trim_start_matches('/');
+        let candidates = [
+            std::path::PathBuf::from("../public").join(trimmed),
+            std::path::PathBuf::from("public").join(trimmed),
+        ];
+        for c in &candidates {
+            if c.exists() {
+                if let Ok(abs) = c.canonicalize() {
+                    return abs.to_string_lossy().to_string();
+                }
+            }
+        }
+    }
+    path.to_string()
+}
+
 /// GPT-SoVITS HTTP API 合成
-fn synthesize_gpt_sovits(text: &str, base_url: &str, refer_voice: &str) -> Result<Vec<u8>, String> {
+fn synthesize_gpt_sovits(text: &str, base_url: &str, refer_voice: &str, prompt_text: &str) -> Result<Vec<u8>, String> {
     ensure_crypto_provider();
     let url = format!("{}/tts", base_url.trim_end_matches('/'));
-    let body = serde_json::json!({
+
+    let resolved_ref = resolve_ref_audio_path(refer_voice);
+    eprintln!("[gpt-sovits] text={} ref={} prompt_text={}", &text[..text.len().min(30)], &resolved_ref, &prompt_text[..prompt_text.len().min(30)]);
+    let mut body = serde_json::json!({
         "text": text,
         "text_lang": "zh",
-        "ref_audio_path": refer_voice,
+        "ref_audio_path": resolved_ref,
         "prompt_lang": "zh",
         "text_split_method": "cut5",
     });
+    if !prompt_text.is_empty() {
+        body["prompt_text"] = serde_json::Value::String(prompt_text.to_string());
+    }
     let agent: ureq::Agent = ureq::Agent::config_builder()
-        .timeout_global(Some(std::time::Duration::from_secs(30)))
+        .timeout_global(Some(std::time::Duration::from_secs(90)))
         .build()
         .into();
     let resp = agent
