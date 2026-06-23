@@ -1,6 +1,7 @@
 pub mod agent;
 mod commands;
 pub mod config;
+pub mod cosyvoice3;
 pub mod llm;
 pub mod paths;
 pub mod tts;
@@ -172,6 +173,7 @@ pub fn run() {
                 std::collections::HashMap::new(),
             )));
             app.manage(voice::RecorderState(Mutex::new(None)));
+            app.manage(cosyvoice3::CosyVoice3State(Mutex::new(None)));
             app.manage(ShortcutState2(Mutex::new(ptt)));
             agent::http_server::start(app.handle().clone());
 
@@ -182,6 +184,23 @@ pub fn run() {
             if let Err(e) = app.global_shortcut().register(ptt) {
                 eprintln!("[voice] 全局快捷键注册失败: {e}");
             }
+
+            // CosyVoice3 auto-start
+            let cfg = config::get_config();
+            if cfg.pointer("/tts/provider").and_then(|v| v.as_str()) == Some("cosyvoice3") {
+                if cfg.pointer("/tts/cosyvoice3/auto_start").and_then(|v| v.as_bool()) == Some(true) {
+                    let port = cfg.pointer("/tts/cosyvoice3/port")
+                        .and_then(|v| v.as_u64()).unwrap_or(8000) as u16;
+                    let handle = app.handle().clone();
+                    tauri::async_runtime::spawn(async move {
+                        match cosyvoice3::start_server_internal(&handle, port).await {
+                            Ok(url) => eprintln!("[cosyvoice3] auto-started at {url}"),
+                            Err(e) => eprintln!("[cosyvoice3] auto-start failed: {e}"),
+                        }
+                    });
+                }
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -203,7 +222,12 @@ pub fn run() {
             voice::voice_stop_and_transcribe,
             set_ptt_shortcut,
             get_ptt_shortcut,
-            window_level::set_always_visible
+            window_level::set_always_visible,
+            cosyvoice3::cosyvoice3_check_env,
+            cosyvoice3::cosyvoice3_install,
+            cosyvoice3::cosyvoice3_start,
+            cosyvoice3::cosyvoice3_stop,
+            cosyvoice3::cosyvoice3_status
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -10,6 +10,11 @@ export interface SettingsDeps {
   getHookEndpoint: () => Promise<string>;
   installClaudeHook: (dir: string) => Promise<string>;
   setAlwaysVisible: (enabled: boolean) => Promise<void>;
+  cosyvoice3CheckEnv: () => Promise<Record<string, unknown>>;
+  cosyvoice3Install: (hfMirror?: string) => Promise<void>;
+  cosyvoice3Start: (port?: number) => Promise<string>;
+  cosyvoice3Stop: () => Promise<void>;
+  cosyvoice3Status: () => Promise<Record<string, unknown>>;
   characters: Array<{ id: string; displayName: string }>;
   onApplied: (config: Record<string, unknown>) => void;
 }
@@ -41,6 +46,7 @@ export async function showSettings(deps: SettingsDeps) {
   try { pttShortcut = await deps.getPttShortcut(); } catch (e) { console.warn("[settings] getPttShortcut:", e); }
   const up = (cfg.user_profile ?? {}) as Record<string, string>;
   const ttsConf = (cfg.tts ?? {}) as Record<string, string>;
+  const cv3Conf = ((cfg.tts as Record<string, unknown> ?? {}).cosyvoice3 ?? {}) as Record<string, unknown>;
   let hookEndpoint = "";
   try { hookEndpoint = await deps.getHookEndpoint(); } catch { /* not running */ }
   console.log("[settings] data loaded, ptt:", pttShortcut, "hook:", hookEndpoint);
@@ -111,8 +117,46 @@ export async function showSettings(deps: SettingsDeps) {
         <option value="edge-tts">Edge TTS（默认，联网，零配置）</option>
         <option value="gpt-sovits">GPT-SoVITS（本地，需启动服务）</option>
         <option value="cosyvoice">CosyVoice 2（本地，需 Docker + GPU）</option>
+        <option value="cosyvoice3">CosyVoice3 MLX（本地插件，Apple Silicon）</option>
       </select>`)}
       ${field("TTS 服务地址（仅 GPT-SoVITS / CosyVoice）", `<input id="st-tts-url" style="${inputStyle}" value="${ttsConf.provider_url ?? ""}" placeholder="如 http://127.0.0.1:9880">`)}
+
+      <div id="st-cv3-panel" style="display:none;margin-top:10px;border-top:1px solid #333;padding-top:10px">
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button id="st-cv3-simple-btn" style="padding:5px 12px;border-radius:8px;border:1px solid #3b82f6;background:rgba(59,130,246,.15);color:#8cf;cursor:pointer;font-size:12px">傻瓜版</button>
+          <button id="st-cv3-adv-btn" style="padding:5px 12px;border-radius:8px;border:1px solid #444;background:transparent;color:#999;cursor:pointer;font-size:12px">高级版</button>
+        </div>
+
+        <div id="st-cv3-simple">
+          <div id="st-cv3-hw" style="margin:6px 0;padding:8px;border-radius:8px;background:rgba(255,255,255,.04);font-size:12px;color:#9aa">点击「检测硬件」查看兼容性</div>
+          <button id="st-cv3-check" style="padding:5px 12px;border-radius:8px;border:1px solid #555;background:transparent;color:#8cf;cursor:pointer;font-size:12px;margin-bottom:6px">🔍 检测硬件</button>
+          <div id="st-cv3-install-sec" style="display:none;margin:6px 0">
+            <button id="st-cv3-install" style="padding:5px 14px;border-radius:8px;border:0;background:#3b82f6;color:#fff;cursor:pointer;font-size:12px">📦 安装 CosyVoice3（约 1.5GB）</button>
+            <div id="st-cv3-progress" style="display:none;margin-top:4px">
+              <div style="height:4px;background:#333;border-radius:2px;overflow:hidden"><div id="st-cv3-bar" style="height:100%;background:#3b82f6;width:0%;transition:width .3s"></div></div>
+              <div id="st-cv3-prog-text" style="color:#9aa;font-size:11px;margin-top:2px"></div>
+            </div>
+          </div>
+          <div id="st-cv3-server-sec" style="display:none;margin:6px 0">
+            <div style="display:flex;gap:6px;align-items:center">
+              <button id="st-cv3-start" style="padding:5px 12px;border-radius:8px;border:0;background:#22c55e;color:#fff;cursor:pointer;font-size:12px">▶ 启动服务</button>
+              <button id="st-cv3-stop" style="padding:5px 12px;border-radius:8px;border:1px solid #f55;background:transparent;color:#f88;cursor:pointer;font-size:12px;display:none">⏹ 停止</button>
+              <span id="st-cv3-server-status" style="color:#777;font-size:11px"></span>
+            </div>
+            <label style="display:flex;gap:6px;align-items:center;margin:6px 0;font-size:12px">
+              <input id="st-cv3-autostart" type="checkbox" ${(cv3Conf.auto_start ? "checked" : "")}> 应用启动时自动启动
+            </label>
+          </div>
+          <div id="st-cv3-warn" style="display:none;color:#f90;font-size:11px;margin:6px 0;padding:6px;background:rgba(200,150,0,.1);border-radius:6px"></div>
+        </div>
+
+        <div id="st-cv3-advanced" style="display:none">
+          ${field("服务地址", `<input id="st-cv3-url" style="${inputStyle}" value="${cv3Conf.url ?? "http://127.0.0.1:8000"}" placeholder="http://127.0.0.1:8000">`)}
+          ${field("Temperature (0-1)", `<input id="st-cv3-temp" type="number" step="0.1" min="0" max="1" style="${inputStyle}" value="${cv3Conf.temperature ?? 0.7}">`)}
+          ${field("Speed (0.5-2)", `<input id="st-cv3-speed" type="number" step="0.1" min="0.5" max="2" style="${inputStyle}" value="${cv3Conf.speed ?? 1.0}">`)}
+          ${field("HuggingFace 镜像", `<input id="st-cv3-mirror" style="${inputStyle}" value="${cv3Conf.hf_mirror ?? "https://hf-mirror.com"}" placeholder="直连则留空">`)}
+        </div>
+      </div>
       </div>
     </fieldset>
 
@@ -181,15 +225,139 @@ export async function showSettings(deps: SettingsDeps) {
   const voHint = panel.querySelector("#st-vo-hint") as HTMLElement;
   const voCheckbox = panel.querySelector("#st-vo-on") as HTMLInputElement;
   const ttsProviderSel = panel.querySelector("#st-tts-provider") as HTMLSelectElement;
+  const cv3Panel = panel.querySelector("#st-cv3-panel") as HTMLElement;
+
   function updateVoiceOverrideHint() {
     const isEdgeTts = ttsProviderSel.value === "edge-tts";
     voHint.style.display = isEdgeTts ? "none" : "block";
-    if (!isEdgeTts && voCheckbox.checked) {
-      voCheckbox.checked = false;
-    }
+    if (!isEdgeTts && voCheckbox.checked) voCheckbox.checked = false;
+    cv3Panel.style.display = ttsProviderSel.value === "cosyvoice3" ? "block" : "none";
   }
   ttsProviderSel.addEventListener("change", updateVoiceOverrideHint);
   updateVoiceOverrideHint();
+
+  // CosyVoice3 mode toggle
+  const cv3SimpleBtn = panel.querySelector("#st-cv3-simple-btn") as HTMLElement;
+  const cv3AdvBtn = panel.querySelector("#st-cv3-adv-btn") as HTMLElement;
+  const cv3Simple = panel.querySelector("#st-cv3-simple") as HTMLElement;
+  const cv3Adv = panel.querySelector("#st-cv3-advanced") as HTMLElement;
+  cv3SimpleBtn.addEventListener("click", () => {
+    cv3Simple.style.display = "block"; cv3Adv.style.display = "none";
+    cv3SimpleBtn.style.borderColor = "#3b82f6"; cv3SimpleBtn.style.color = "#8cf";
+    cv3AdvBtn.style.borderColor = "#444"; cv3AdvBtn.style.color = "#999";
+  });
+  cv3AdvBtn.addEventListener("click", () => {
+    cv3Simple.style.display = "none"; cv3Adv.style.display = "block";
+    cv3AdvBtn.style.borderColor = "#3b82f6"; cv3AdvBtn.style.color = "#8cf";
+    cv3SimpleBtn.style.borderColor = "#444"; cv3SimpleBtn.style.color = "#999";
+  });
+
+  // CosyVoice3 check env
+  panel.querySelector("#st-cv3-check")!.addEventListener("click", async () => {
+    const hw = panel!.querySelector("#st-cv3-hw") as HTMLElement;
+    const warn = panel!.querySelector("#st-cv3-warn") as HTMLElement;
+    hw.textContent = "检测中…";
+    try {
+      const env = await deps.cosyvoice3CheckEnv();
+      const lines: string[] = [];
+      lines.push(env.python_available ? `✅ Python ${env.python_version}` : "❌ 未找到 Python 3.10-3.12");
+      lines.push(`📱 ${env.platform}`);
+      lines.push(`💾 RAM ${(env.ram_gb as number).toFixed(0)}GB · GPU ${env.gpu_cores} 核`);
+      lines.push(env.mlx_compatible ? "✅ MLX 兼容" : "⚠ 不兼容 MLX");
+      if (env.already_installed) lines.push("✅ 已安装");
+      if (env.model_downloaded) lines.push("✅ 模型已下载");
+      hw.innerHTML = lines.join("<br>");
+
+      if (env.performance_warning) {
+        warn.textContent = `⚠ ${env.performance_warning}`;
+        warn.style.display = "block";
+      } else {
+        warn.style.display = "none";
+      }
+
+      if (env.python_available && (env.mlx_compatible || env.platform === (env.platform as string))) {
+        if (env.already_installed && env.model_downloaded) {
+          (panel!.querySelector("#st-cv3-server-sec") as HTMLElement).style.display = "block";
+          (panel!.querySelector("#st-cv3-install-sec") as HTMLElement).style.display = "none";
+        } else {
+          (panel!.querySelector("#st-cv3-install-sec") as HTMLElement).style.display = "block";
+        }
+      }
+    } catch (e) {
+      hw.textContent = `❌ 检测失败: ${e}`;
+    }
+  });
+
+  // CosyVoice3 install
+  panel.querySelector("#st-cv3-install")!.addEventListener("click", async () => {
+    const btn = panel!.querySelector("#st-cv3-install") as HTMLButtonElement;
+    const prog = panel!.querySelector("#st-cv3-progress") as HTMLElement;
+    const bar = panel!.querySelector("#st-cv3-bar") as HTMLElement;
+    const txt = panel!.querySelector("#st-cv3-prog-text") as HTMLElement;
+    btn.disabled = true; btn.textContent = "安装中…";
+    prog.style.display = "block";
+
+    const unlisten = await (await import("@tauri-apps/api/event")).listen("cosyvoice3://progress", (e: { payload: Record<string, unknown> }) => {
+      const p = e.payload;
+      bar.style.width = `${p.percent}%`;
+      txt.textContent = p.message as string;
+    });
+
+    try {
+      const mirror = (panel!.querySelector("#st-cv3-mirror") as HTMLInputElement | null)?.value.trim() || "https://hf-mirror.com";
+      await deps.cosyvoice3Install(mirror);
+      txt.textContent = "✅ 安装完成";
+      bar.style.width = "100%";
+      (panel!.querySelector("#st-cv3-server-sec") as HTMLElement).style.display = "block";
+    } catch (e) {
+      txt.textContent = `❌ 安装失败: ${e}`;
+      btn.disabled = false; btn.textContent = "📦 重试安装";
+    } finally {
+      unlisten();
+    }
+  });
+
+  // CosyVoice3 start/stop
+  const cv3StartBtn = panel.querySelector("#st-cv3-start") as HTMLElement;
+  const cv3StopBtn = panel.querySelector("#st-cv3-stop") as HTMLElement;
+  const cv3ServerStatus = panel.querySelector("#st-cv3-server-status") as HTMLElement;
+
+  cv3StartBtn.addEventListener("click", async () => {
+    cv3StartBtn.textContent = "启动中…";
+    cv3ServerStatus.textContent = "（模型加载约 30-60 秒）";
+    try {
+      const url = await deps.cosyvoice3Start(8000);
+      cv3ServerStatus.textContent = `✅ ${url}`;
+      cv3ServerStatus.style.color = "#7a7";
+      cv3StartBtn.style.display = "none"; cv3StopBtn.style.display = "inline-block";
+    } catch (e) {
+      cv3ServerStatus.textContent = `❌ ${e}`;
+      cv3ServerStatus.style.color = "#f77";
+      cv3StartBtn.textContent = "▶ 启动服务";
+    }
+  });
+
+  cv3StopBtn.addEventListener("click", async () => {
+    await deps.cosyvoice3Stop();
+    cv3ServerStatus.textContent = "已停止";
+    cv3ServerStatus.style.color = "#777";
+    cv3StopBtn.style.display = "none"; cv3StartBtn.style.display = "inline-block";
+    cv3StartBtn.textContent = "▶ 启动服务";
+  });
+
+  // Check initial CosyVoice3 status
+  if (ttsProviderSel.value === "cosyvoice3") {
+    deps.cosyvoice3Status().then((s) => {
+      if (s.installed && s.model_downloaded) {
+        (panel!.querySelector("#st-cv3-server-sec") as HTMLElement).style.display = "block";
+        if (s.server_running) {
+          cv3ServerStatus.textContent = `✅ ${s.server_url}`;
+          cv3ServerStatus.style.color = "#7a7";
+          cv3StartBtn.style.display = "none"; cv3StopBtn.style.display = "inline-block";
+        }
+      }
+    }).catch(() => {});
+  }
 
   // 标题栏拖拽窗口
   const titlebar = panel.querySelector("#st-titlebar")!;
@@ -323,7 +491,19 @@ export async function showSettings(deps: SettingsDeps) {
       approval_mode: v("#st-mode"),
       tts: {
         provider: v("#st-tts-provider"),
-        provider_url: v("#st-tts-url"),
+        provider_url: v("#st-tts-provider") === "cosyvoice3"
+          ? (panel!.querySelector("#st-cv3-url") as HTMLInputElement | null)?.value.trim() || "http://127.0.0.1:8000"
+          : v("#st-tts-url"),
+        ...(v("#st-tts-provider") === "cosyvoice3" ? {
+          cosyvoice3: {
+            mode: cv3Adv.style.display === "none" ? "simple" : "advanced",
+            auto_start: (panel!.querySelector("#st-cv3-autostart") as HTMLInputElement | null)?.checked ?? false,
+            port: 8000,
+            temperature: parseFloat((panel!.querySelector("#st-cv3-temp") as HTMLInputElement | null)?.value ?? "0.7") || 0.7,
+            speed: parseFloat((panel!.querySelector("#st-cv3-speed") as HTMLInputElement | null)?.value ?? "1.0") || 1.0,
+            hf_mirror: (panel!.querySelector("#st-cv3-mirror") as HTMLInputElement | null)?.value.trim() || "https://hf-mirror.com",
+          },
+        } : {}),
       },
       active_character: v("#st-char"),
     };

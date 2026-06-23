@@ -13,7 +13,7 @@ export const DEFAULT_VOICES: { female: VoiceProfile; male: VoiceProfile } = {
   male: { provider: "edge-tts", voice: "zh-CN-YunxiNeural", pitch: "+0Hz", rate: "+0%" },
 };
 
-const VALID_PROVIDERS = new Set(["edge-tts", "system"]);
+const VALID_PROVIDERS = new Set(["edge-tts", "system", "cosyvoice3"]);
 
 export interface VoiceOverride {
   enabled?: boolean;

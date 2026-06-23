@@ -67,3 +67,7 @@ triggers:
   body:
     motion: TapBody
     tts: "我在。说吧。"
+
+cosyvoice3:
+  ref_audio: /voice-refs/suit_ref.mp3
+  ref_text: "好的，数据已确认。按计划推进即可。"

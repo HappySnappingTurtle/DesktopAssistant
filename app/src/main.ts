@@ -92,11 +92,13 @@ async function setup() {
         const provider = ttsConfig.provider ?? "edge-tts";
         let voiceOrRef = v.voice;
         let promptText: string | null = null;
-        if (provider === "gpt-sovits") {
+        if (provider === "gpt-sovits" || provider === "cosyvoice3") {
           const active = store.getActive();
-          const sovits = active?.manifest.gpt_sovits;
-          if (sovits?.ref_audio) voiceOrRef = sovits.ref_audio;
-          if (sovits?.ref_text) promptText = sovits.ref_text;
+          const refCfg = provider === "cosyvoice3"
+            ? (active?.manifest.cosyvoice3 ?? active?.manifest.gpt_sovits)
+            : active?.manifest.gpt_sovits;
+          if (refCfg?.ref_audio) voiceOrRef = refCfg.ref_audio;
+          if (refCfg?.ref_text) promptText = refCfg.ref_text;
         }
         try {
           const b64 = await invoke<string>("tts_synthesize", {
@@ -108,7 +110,7 @@ async function setup() {
             providerUrl: ttsConfig.provider_url ?? null,
             promptText,
           });
-          const mime = provider === "gpt-sovits" ? "audio/wav" : "audio/mpeg";
+          const mime = (provider === "gpt-sovits" || provider === "cosyvoice3") ? "audio/wav" : "audio/mpeg";
           return `data:${mime};base64,${b64}`;
         } catch (e) {
           if (provider !== "edge-tts") {
@@ -134,11 +136,13 @@ async function setup() {
       const provider = ttsConfig.provider ?? "edge-tts";
       let voiceOrRef = v.voice;
       let promptText: string | null = null;
-      if (provider === "gpt-sovits") {
+      if (provider === "gpt-sovits" || provider === "cosyvoice3") {
         const active = store.getActive();
-        const sovits = active?.manifest.gpt_sovits;
-        if (sovits?.ref_audio) voiceOrRef = sovits.ref_audio;
-        if (sovits?.ref_text) promptText = sovits.ref_text;
+        const refCfg = provider === "cosyvoice3"
+          ? (active?.manifest.cosyvoice3 ?? active?.manifest.gpt_sovits)
+          : active?.manifest.gpt_sovits;
+        if (refCfg?.ref_audio) voiceOrRef = refCfg.ref_audio;
+        if (refCfg?.ref_text) promptText = refCfg.ref_text;
       }
       try {
         const b64 = await invoke<string>("tts_synthesize", {
@@ -147,7 +151,7 @@ async function setup() {
           providerUrl: ttsConfig.provider_url ?? null,
           promptText,
         });
-        const mime = provider === "gpt-sovits" ? "audio/wav" : "audio/mpeg";
+        const mime = (provider === "gpt-sovits" || provider === "cosyvoice3") ? "audio/wav" : "audio/mpeg";
         return `data:${mime};base64,${b64}`;
       } catch (e) {
         if (provider !== "edge-tts") {
@@ -458,6 +462,11 @@ async function setup() {
       getHookEndpoint: () => invoke("hook_endpoint"),
       installClaudeHook: (dir) => invoke("install_claude_hook", { projectDir: dir }),
       setAlwaysVisible: (enabled) => invoke("set_always_visible", { enabled }),
+      cosyvoice3CheckEnv: () => invoke("cosyvoice3_check_env"),
+      cosyvoice3Install: (hfMirror) => invoke("cosyvoice3_install", { hfMirror }),
+      cosyvoice3Start: (port) => invoke("cosyvoice3_start", { port }),
+      cosyvoice3Stop: () => invoke("cosyvoice3_stop"),
+      cosyvoice3Status: () => invoke("cosyvoice3_status"),
       characters: store.list().map((c) => ({ id: c.id, displayName: c.displayName })),
       onApplied: (merged) => {
         const prevChar = config.active_character;

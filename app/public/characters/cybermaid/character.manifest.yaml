@@ -56,3 +56,7 @@ triggers:
     tts: "嗯？...怎么了。"
   body:
     tts: "有事的话，说吧。"
+
+cosyvoice3:
+  ref_audio: /voice-refs/cybermaid_ref.mp3
+  ref_text: "了解，任务已确认。我会按照既定方案执行，系统运行正常。如有异常第一时间通知你。"

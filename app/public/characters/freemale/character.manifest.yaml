@@ -45,3 +45,7 @@ triggers:
     tts: "嗯？怎么了？"
   body:
     tts: "有事找我？说吧。"
+
+cosyvoice3:
+  ref_audio: /voice-refs/freemale_ref.mp3
+  ref_text: "嗯，没问题。这个事情交给我就好了，你先去忙你的，不用担心。回头给你消息。"

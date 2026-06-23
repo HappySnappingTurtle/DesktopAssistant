@@ -61,3 +61,7 @@ triggers:
   body:
     motion: TapBody
     tts: "我在呢，有什么事吗？"
+
+cosyvoice3:
+  ref_audio: /voice-refs/hiyori_ref.mp3
+  ref_text: "嗯...你今天看起来有点累呢。要不要休息一下？我帮你泡杯茶吧，别太勉强自己了。"

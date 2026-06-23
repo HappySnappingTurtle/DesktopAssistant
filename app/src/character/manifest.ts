@@ -35,6 +35,10 @@ export interface CharacterManifest {
     ref_text?: string;
     ref_lang?: string;
   };
+  cosyvoice3?: {
+    ref_audio?: string;
+    ref_text?: string;
+  };
 }
 
 export interface ParseOk {
@@ -60,6 +64,7 @@ const KNOWN = new Set<string>([
   "scale",
   "emotion_param_overrides",
   "gpt_sovits",
+  "cosyvoice3",
   "default_name_cn",
   "default_name_en",
   "persona_card",

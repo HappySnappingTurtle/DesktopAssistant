@@ -38,3 +38,35 @@ pub fn whisper_bin() -> &'static str {
     #[cfg(not(target_os = "windows"))]
     { "whisper-cli" }
 }
+
+pub fn plugin_dir(name: &str) -> PathBuf {
+    data_dir().join("plugins").join(name)
+}
+
+pub fn cosyvoice3_dir() -> PathBuf {
+    plugin_dir("cosyvoice3")
+}
+
+pub fn cosyvoice3_venv() -> PathBuf {
+    cosyvoice3_dir().join("venv")
+}
+
+pub fn cosyvoice3_python() -> PathBuf {
+    #[cfg(target_os = "windows")]
+    { cosyvoice3_venv().join("Scripts").join("python.exe") }
+
+    #[cfg(not(target_os = "windows"))]
+    { cosyvoice3_venv().join("bin").join("python3") }
+}
+
+pub fn cosyvoice3_model_dir() -> PathBuf {
+    cosyvoice3_dir().join("models").join("Fun-CosyVoice3-0.5B-2512-4bit")
+}
+
+pub fn cosyvoice3_pid_file() -> PathBuf {
+    cosyvoice3_dir().join("server.pid")
+}
+
+pub fn cosyvoice3_status_file() -> PathBuf {
+    cosyvoice3_dir().join("status.json")
+}

@@ -49,3 +49,7 @@ triggers:
     tts: "喵！不许随便摸我耳朵！...再摸一下也行啦。"
   body:
     tts: "有什么事就直说嘛，我又不会咬人。"
+
+cosyvoice3:
+  ref_audio: /voice-refs/dk_ref.mp3
+  ref_text: "哼，你又来了。不是说想你了啦。有什么事就直说嘛，我又不会咬人的喵。"

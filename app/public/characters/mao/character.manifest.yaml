@@ -49,3 +49,7 @@ triggers:
   body:
     motion: special_01
     tts: "嘿嘿，找我玩吗？"
+
+cosyvoice3:
+  ref_audio: /voice-refs/mao_ref.mp3
+  ref_text: "嘿！你好呀！今天天气真不错呢，要不要一起出去玩？我可是超级期待的！"

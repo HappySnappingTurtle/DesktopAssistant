@@ -157,6 +157,11 @@ pub async fn tts_synthesize(
                 let url = provider_url.as_deref().unwrap_or("http://127.0.0.1:50000");
                 synthesize_cosyvoice(&text, url, &voice)?
             }
+            "cosyvoice3" => {
+                let url = provider_url.as_deref().unwrap_or("http://127.0.0.1:8000");
+                let pt = prompt_text.as_deref().unwrap_or("");
+                synthesize_cosyvoice3(&text, url, &voice, pt)?
+            }
             _ => {
                 // edge-tts（默认）
                 synthesize_blocking(&text, &voice, &pitch, &rate)?
@@ -224,6 +229,44 @@ fn synthesize_gpt_sovits(text: &str, base_url: &str, refer_voice: &str, prompt_t
         .map_err(|e| format!("GPT-SoVITS 读取失败: {e}"))?;
     if bytes.len() < 100 {
         return Err(format!("GPT-SoVITS 返回太短: {} bytes", bytes.len()));
+    }
+    Ok(bytes)
+}
+
+/// CosyVoice 3 via mlx-audio OpenAI-compatible API
+fn synthesize_cosyvoice3(text: &str, base_url: &str, ref_audio_path: &str, ref_text: &str) -> Result<Vec<u8>, String> {
+    ensure_crypto_provider();
+    let url = format!("{}/v1/audio/speech", base_url.trim_end_matches('/'));
+
+    let chars: Vec<char> = text.chars().collect();
+    let truncated: String = if chars.len() > 200 {
+        chars[..200].iter().collect::<String>() + "……"
+    } else {
+        text.to_string()
+    };
+
+    let resolved_ref = resolve_ref_audio_path(ref_audio_path);
+    eprintln!("[cosyvoice3] text={} ref={}", &truncated[..truncated.len().min(30)], &resolved_ref);
+    let body = serde_json::json!({
+        "model": "mlx-community/Fun-CosyVoice3-0.5B-2512-4bit",
+        "input": truncated,
+        "voice": "reference",
+        "response_format": "wav",
+        "ref_audio": resolved_ref,
+        "ref_text": ref_text,
+    });
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        .timeout_global(Some(std::time::Duration::from_secs(60)))
+        .build()
+        .into();
+    let resp = agent
+        .post(&url)
+        .send_json(&body)
+        .map_err(|e| format!("CosyVoice3 请求失败（60s超时）: {e}"))?;
+    let bytes = resp.into_body().read_to_vec()
+        .map_err(|e| format!("CosyVoice3 读取失败: {e}"))?;
+    if bytes.len() < 100 {
+        return Err(format!("CosyVoice3 返回太短: {} bytes", bytes.len()));
     }
     Ok(bytes)
 }
