@@ -123,18 +123,6 @@ async function setup() {
         }
       },
       play: (url) => renderer?.speak(url) ?? Promise.resolve(),
-      fallback: (text) =>
-        new Promise<void>((resolve) => {
-          const u = new SpeechSynthesisUtterance(text);
-          u.lang = "zh-CN";
-          // 尝试匹配中文声音
-          const voices = speechSynthesis.getVoices();
-          const zhVoice = voices.find((v) => v.lang.startsWith("zh"));
-          if (zhVoice) u.voice = zhVoice;
-          u.onend = () => resolve();
-          u.onerror = () => resolve();
-          speechSynthesis.speak(u);
-        }),
     },
     DEFAULT_VOICES.female,
   );

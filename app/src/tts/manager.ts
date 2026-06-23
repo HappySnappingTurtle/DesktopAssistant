@@ -9,7 +9,6 @@ export interface TTSRequest {
 export interface TTSDeps {
   synthesize: (text: string, voice: VoiceProfile) => Promise<string>; // → dataUrl
   play: (dataUrl: string) => Promise<void>;
-  fallback?: (text: string) => Promise<void>;
   now?: () => number;
 }
 
@@ -44,12 +43,7 @@ export function createTTSManager(deps: TTSDeps, initialVoice: VoiceProfile) {
       const url = await withTimeout(deps.synthesize(item.text, voice), SYNTH_TIMEOUT_MS);
       await deps.play(url);
     } catch (e) {
-      console.warn("[tts] synthesize/play failed, fallback:", e);
-      try {
-        await deps.fallback?.(item.text);
-      } catch {
-        /* fallback 也失败则放弃本条 */
-      }
+      console.warn("[tts] synthesize/play failed, skipping:", e);
     } finally {
       playing = false;
       void pump();

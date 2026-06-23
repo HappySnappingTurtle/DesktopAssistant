@@ -23,7 +23,6 @@ function harness(t0 = 0) {
           release = res;
         }),
     ),
-    fallback: vi.fn(async () => {}),
     now: () => t,
   };
   return {
@@ -91,7 +90,7 @@ describe("TTSManager", () => {
     expect(h.played[1]).toBe("url:H");
   });
 
-  it("TQ-05 synth failure → fallback, queue continues", async () => {
+  it("TQ-05 synth failure → skip and continue queue", async () => {
     const h = harness();
     h.deps.synthesize.mockRejectedValueOnce(new Error("offline"));
     const m = createTTSManager(h.deps, VOICE_F);
@@ -99,7 +98,7 @@ describe("TTSManager", () => {
     m.enqueue({ text: "好", urgency: "low" });
     await h.flush();
     await h.flush();
-    expect(h.deps.fallback).toHaveBeenCalledWith("坏");
+    await h.flush();
     expect(h.played).toEqual(["url:好"]);
   });
 
