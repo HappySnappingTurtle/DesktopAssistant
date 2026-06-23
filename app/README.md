@@ -1,7 +1,12 @@
-# Tauri + Vanilla TS
+# DesktopAssistant — App
 
-This template should help get you started developing with Tauri in vanilla HTML, CSS and Typescript.
+Tauri 2 + TypeScript + PixiJS 7 frontend.
 
-## Recommended IDE Setup
+```bash
+pnpm install
+pnpm tauri dev       # dev with hot reload
+pnpm test            # vitest (186 tests)
+pnpm tauri build     # release bundle
+```
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+See [root README](../README.md) for full documentation.
