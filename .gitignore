@@ -36,13 +36,14 @@ config.json
 app/public/characters/*/model/**/*.png
 app/public/vendor/*.js
 
-# Design docs (local only)
+# Design docs & progress (local only)
 *.设计文档.md
 *.用例文档.md
 *-设计文档.md
 *-用例文档.md
 TODOList.md
 进度记录.md
+声线设计方案.md
 使用说明.md
 00-*.md
 01-*.md
@@ -50,4 +51,7 @@ T0*-*.md
 T1*-*.md
 LLM*.md
 角色记忆*.md
+
+# Voice training & model data (local only, too large for git)
+voice-training/
 voice-samples/
