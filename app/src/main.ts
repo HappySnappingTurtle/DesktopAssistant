@@ -98,17 +98,29 @@ async function setup() {
           if (sovits?.ref_audio) voiceOrRef = sovits.ref_audio;
           if (sovits?.ref_text) promptText = sovits.ref_text;
         }
-        const b64 = await invoke<string>("tts_synthesize", {
-          text,
-          voice: voiceOrRef,
-          pitch: v.pitch,
-          rate: v.rate,
-          provider: provider !== "edge-tts" ? provider : null,
-          providerUrl: ttsConfig.provider_url ?? null,
-          promptText,
-        });
-        const mime = provider === "gpt-sovits" ? "audio/wav" : "audio/mpeg";
-        return `data:${mime};base64,${b64}`;
+        try {
+          const b64 = await invoke<string>("tts_synthesize", {
+            text,
+            voice: voiceOrRef,
+            pitch: v.pitch,
+            rate: v.rate,
+            provider: provider !== "edge-tts" ? provider : null,
+            providerUrl: ttsConfig.provider_url ?? null,
+            promptText,
+          });
+          const mime = provider === "gpt-sovits" ? "audio/wav" : "audio/mpeg";
+          return `data:${mime};base64,${b64}`;
+        } catch (e) {
+          if (provider !== "edge-tts") {
+            console.warn(`[tts] ${provider} failed, falling back to edge-tts:`, e);
+            const b64 = await invoke<string>("tts_synthesize", {
+              text, voice: v.voice, pitch: v.pitch, rate: v.rate,
+              provider: null, providerUrl: null, promptText: null,
+            });
+            return `data:audio/mpeg;base64,${b64}`;
+          }
+          throw e;
+        }
       },
       play: (url) => renderer?.speak(url) ?? Promise.resolve(),
       fallback: (text) =>
@@ -140,14 +152,26 @@ async function setup() {
         if (sovits?.ref_audio) voiceOrRef = sovits.ref_audio;
         if (sovits?.ref_text) promptText = sovits.ref_text;
       }
-      const b64 = await invoke<string>("tts_synthesize", {
-        text, voice: voiceOrRef, pitch: v.pitch, rate: v.rate,
-        provider: provider !== "edge-tts" ? provider : null,
-        providerUrl: ttsConfig.provider_url ?? null,
-        promptText,
-      });
-      const mime = provider === "gpt-sovits" ? "audio/wav" : "audio/mpeg";
-      return `data:${mime};base64,${b64}`;
+      try {
+        const b64 = await invoke<string>("tts_synthesize", {
+          text, voice: voiceOrRef, pitch: v.pitch, rate: v.rate,
+          provider: provider !== "edge-tts" ? provider : null,
+          providerUrl: ttsConfig.provider_url ?? null,
+          promptText,
+        });
+        const mime = provider === "gpt-sovits" ? "audio/wav" : "audio/mpeg";
+        return `data:${mime};base64,${b64}`;
+      } catch (e) {
+        if (provider !== "edge-tts") {
+          console.warn(`[tts-cache] ${provider} failed, falling back to edge-tts:`, e);
+          const b64 = await invoke<string>("tts_synthesize", {
+            text, voice: v.voice, pitch: v.pitch, rate: v.rate,
+            provider: null, providerUrl: null, promptText: null,
+          });
+          return `data:audio/mpeg;base64,${b64}`;
+        }
+        throw e;
+      }
     },
   });
 
@@ -155,10 +179,12 @@ async function setup() {
     const ttsProvider = ((config.tts ?? {}) as Record<string, string>).provider ?? "edge-tts";
     const voice = applyVoiceOverride(manifestVoice, config.voice_override as VoiceOverride, ttsProvider);
     tts.setVoice(voice);
-    // 预合成当前角色的所有点击台词
-    const activeChar = store.getActive();
-    const allPhrases = collectTapPhrases(activeChar?.manifest);
-    phraseCache.setVoice(voice, allPhrases);
+    // 仅 Edge TTS 时预合成点击台词（GPT-SoVITS CPU 推理太慢，逐条预合成会阻塞）
+    if (ttsProvider === "edge-tts") {
+      const activeChar = store.getActive();
+      const allPhrases = collectTapPhrases(activeChar?.manifest);
+      phraseCache.setVoice(voice, allPhrases);
+    }
   }
 
   function collectTapPhrases(manifest?: { triggers?: Record<string, { tts?: string }> }): string[] {
@@ -419,10 +445,8 @@ async function setup() {
       if (cached) {
         void renderer.speak(cached);
       } else {
-        // 缓存未命中——用系统 TTS 兜底（立即发声），同时触发后台缓存
-        const u = new SpeechSynthesisUtterance(phrase);
-        u.lang = "zh-CN";
-        speechSynthesis.speak(u);
+        // 缓存未命中——用 TTS 管线（角色声线 + Edge TTS 降级），同时触发后台缓存
+        tts.enqueue({ text: phrase, urgency: "med" });
         phraseCache.preload(phrase);
       }
     },

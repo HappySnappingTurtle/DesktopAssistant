@@ -15,7 +15,17 @@ export interface TTSDeps {
 
 const QUEUE_LIMIT = 5;
 const DEDUP_MS = 5_000;
+const SYNTH_TIMEOUT_MS = 20_000;
 const URGENCY_RANK: Record<Urgency, number> = { high: 2, med: 1, low: 0 };
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`TTS synthesis timeout (${ms}ms)`)), ms),
+    ),
+  ]);
+}
 
 export function createTTSManager(deps: TTSDeps, initialVoice: VoiceProfile) {
   const now = deps.now ?? (() => Date.now());
@@ -31,7 +41,7 @@ export function createTTSManager(deps: TTSDeps, initialVoice: VoiceProfile) {
     if (!item) return;
     playing = true;
     try {
-      const url = await deps.synthesize(item.text, voice);
+      const url = await withTimeout(deps.synthesize(item.text, voice), SYNTH_TIMEOUT_MS);
       await deps.play(url);
     } catch (e) {
       console.warn("[tts] synthesize/play failed, fallback:", e);

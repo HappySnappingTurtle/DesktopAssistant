@@ -188,15 +188,22 @@ fn resolve_ref_audio_path(path: &str) -> String {
     path.to_string()
 }
 
-/// GPT-SoVITS HTTP API 合成
+/// GPT-SoVITS HTTP API 合成——长文本截断到 50 字以内避免 CPU 推理超时
 fn synthesize_gpt_sovits(text: &str, base_url: &str, refer_voice: &str, prompt_text: &str) -> Result<Vec<u8>, String> {
     ensure_crypto_provider();
     let url = format!("{}/tts", base_url.trim_end_matches('/'));
 
+    let chars: Vec<char> = text.chars().collect();
+    let truncated: String = if chars.len() > 50 {
+        chars[..50].iter().collect::<String>() + "……"
+    } else {
+        text.to_string()
+    };
+
     let resolved_ref = resolve_ref_audio_path(refer_voice);
-    eprintln!("[gpt-sovits] text={} ref={} prompt_text={}", &text[..text.len().min(30)], &resolved_ref, &prompt_text[..prompt_text.len().min(30)]);
+    eprintln!("[gpt-sovits] text={} ref={} prompt_text={}", &truncated[..truncated.len().min(30)], &resolved_ref, &prompt_text[..prompt_text.len().min(30)]);
     let mut body = serde_json::json!({
-        "text": text,
+        "text": truncated,
         "text_lang": "zh",
         "ref_audio_path": resolved_ref,
         "prompt_lang": "zh",
@@ -206,13 +213,13 @@ fn synthesize_gpt_sovits(text: &str, base_url: &str, refer_voice: &str, prompt_t
         body["prompt_text"] = serde_json::Value::String(prompt_text.to_string());
     }
     let agent: ureq::Agent = ureq::Agent::config_builder()
-        .timeout_global(Some(std::time::Duration::from_secs(90)))
+        .timeout_global(Some(std::time::Duration::from_secs(15)))
         .build()
         .into();
     let resp = agent
         .post(&url)
         .send_json(&body)
-        .map_err(|e| format!("GPT-SoVITS 请求失败: {e}"))?;
+        .map_err(|e| format!("GPT-SoVITS 请求失败（15s超时）: {e}"))?;
     let bytes = resp.into_body().read_to_vec()
         .map_err(|e| format!("GPT-SoVITS 读取失败: {e}"))?;
     if bytes.len() < 100 {
