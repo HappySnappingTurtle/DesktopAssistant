@@ -1,0 +1,8 @@
+{
+  "char_id": "dk",
+  "ref_audio": "ref.mp3",
+  "ref_text": "哼，你又来了。不是说想你了啦。有什么事就直说嘛，我又不会咬人的喵。",
+  "sovits_model": null,
+  "gpt_model": null,
+  "mode": "zero-shot"
+}

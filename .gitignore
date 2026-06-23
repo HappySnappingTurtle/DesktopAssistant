@@ -52,6 +52,10 @@ T1*-*.md
 LLM*.md
 角色记忆*.md
 
-# Voice training & model data (local only, too large for git)
-voice-training/
+# Voice training — keep scripts/ref-audio/trained-models, ignore heavy downloads
+voice-training/GPT-SoVITS/
+voice-training/.venv/
+voice-training/cosyvoice3/
+voice-training/aishell3-subset/
+voice-training/verification-output/
 voice-samples/

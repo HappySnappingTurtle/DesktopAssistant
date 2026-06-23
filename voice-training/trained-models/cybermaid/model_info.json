@@ -1,0 +1,8 @@
+{
+  "char_id": "cybermaid",
+  "ref_audio": "ref.mp3",
+  "ref_text": "了解，任务已确认。我会按照既定方案执行，系统运行正常。如有异常第一时间通知你。",
+  "sovits_model": null,
+  "gpt_model": null,
+  "mode": "zero-shot"
+}

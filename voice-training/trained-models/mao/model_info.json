@@ -1,0 +1,8 @@
+{
+  "char_id": "mao",
+  "ref_audio": "ref.mp3",
+  "ref_text": "嘿！你好呀！今天天气真不错呢，要不要一起出去玩？我可是超级期待的！",
+  "sovits_model": null,
+  "gpt_model": null,
+  "mode": "zero-shot"
+}

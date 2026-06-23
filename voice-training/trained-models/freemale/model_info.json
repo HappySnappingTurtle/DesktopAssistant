@@ -1,0 +1,8 @@
+{
+  "char_id": "freemale",
+  "ref_audio": "ref.mp3",
+  "ref_text": "嗯，没问题。这个事情交给我就好了，你先去忙你的，不用担心。回头给你消息。",
+  "sovits_model": null,
+  "gpt_model": null,
+  "mode": "zero-shot"
+}

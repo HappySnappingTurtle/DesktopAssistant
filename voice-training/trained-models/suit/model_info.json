@@ -1,0 +1,8 @@
+{
+  "char_id": "suit",
+  "ref_audio": "ref.mp3",
+  "ref_text": "好的，我已经确认了所有数据。目前进展顺利，按计划推进即可。有任何问题随时联系我。",
+  "sovits_model": null,
+  "gpt_model": null,
+  "mode": "zero-shot"
+}
