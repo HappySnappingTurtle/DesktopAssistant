@@ -8,7 +8,7 @@ interface BaseEvent {
 export type AgentEvent =
   | (BaseEvent & { kind: "approval_needed"; cwd: string; tool: string; prompt_text: string })
   | (BaseEvent & { kind: "idle_prompt"; cwd: string; prompt_text: string })
-  | (BaseEvent & { kind: "task_completed"; cwd: string; summary: string })
+  | (BaseEvent & { kind: "task_completed"; cwd: string; summary: string; output_tail?: string })
   | (BaseEvent & { kind: "agent_error"; message: string });
 
 const KINDS = new Set(["approval_needed", "idle_prompt", "task_completed", "agent_error"]);

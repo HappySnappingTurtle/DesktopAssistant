@@ -108,6 +108,33 @@ fn parse_shortcut(s: &str) -> Result<Shortcut, String> {
 }
 
 #[tauri::command]
+fn get_mode_shortcut() -> String {
+    let default = if cfg!(target_os = "windows") { "Ctrl+Shift+A" } else { "Cmd+Shift+A" };
+    let cfg = crate::config::get_config();
+    cfg["mode_shortcut"].as_str().unwrap_or(default).to_string()
+}
+
+#[tauri::command]
+fn set_mode_shortcut(app: tauri::AppHandle, shortcut_str: String) -> Result<String, String> {
+    let new_sc = parse_shortcut(&shortcut_str)?;
+    let state = app.state::<ModeShortcutState>();
+    let mut current = state.0.lock().map_err(|e| e.to_string())?;
+    let gs = app.global_shortcut();
+    let _ = gs.unregister(*current);
+    gs.on_shortcut(new_sc, mode_switch_handler).map_err(|e| format!("注册失败: {e}"))?;
+    *current = new_sc;
+    let _ = crate::config::set_config(serde_json::json!({ "mode_shortcut": shortcut_str }));
+    Ok(shortcut_str)
+}
+
+pub struct ModeShortcutState(pub Mutex<Shortcut>);
+
+fn mode_switch_handler(app: &tauri::AppHandle, _shortcut: &Shortcut, event: tauri_plugin_global_shortcut::ShortcutEvent) {
+    if event.state() != ShortcutState::Pressed { return; }
+    let _ = app.emit("voice://mode_switch", serde_json::json!({}));
+}
+
+#[tauri::command]
 fn set_ptt_shortcut(app: tauri::AppHandle, shortcut_str: String) -> Result<String, String> {
     let new_sc = parse_shortcut(&shortcut_str)?;
     let state = app.state::<ShortcutState2>();
@@ -138,16 +165,14 @@ fn get_ptt_shortcut() -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // 读取保存的快捷键，默认 Alt+Space
+    // 读取保存的快捷键
     let default_shortcut = if cfg!(target_os = "windows") { "Ctrl+Space" } else { "Alt+Space" };
-    let saved = {
-        let cfg = config::get_config();
-        cfg["ptt_shortcut"]
-            .as_str()
-            .unwrap_or(default_shortcut)
-            .to_string()
-    };
+    let default_mode_sc = if cfg!(target_os = "windows") { "Ctrl+Shift+A" } else { "Cmd+Shift+A" };
+    let cfg_snapshot = config::get_config();
+    let saved = cfg_snapshot["ptt_shortcut"].as_str().unwrap_or(default_shortcut).to_string();
+    let saved_mode = cfg_snapshot["mode_shortcut"].as_str().unwrap_or(default_mode_sc).to_string();
     let ptt = parse_shortcut(&saved).unwrap_or_else(|_| Shortcut::new(Some(Modifiers::ALT), Code::Space));
+    let mode_sc = parse_shortcut(&saved_mode).unwrap_or_else(|_| Shortcut::new(Some(Modifiers::META | Modifiers::SHIFT), Code::KeyA));
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -169,12 +194,13 @@ pub fn run() {
             );
             app.manage(BusState(Mutex::new(bus)));
             app.manage(agent::http_server::EndpointState(Mutex::new(None)));
-            app.manage(agent::http_server::PtyRegistry(Mutex::new(
-                std::collections::HashMap::new(),
+            app.manage(agent::session::SessionRegistry(Mutex::new(
+                agent::session::SessionRegistryInner::new(),
             )));
             app.manage(voice::RecorderState(Mutex::new(None)));
             app.manage(cosyvoice3::CosyVoice3State(Mutex::new(None)));
             app.manage(ShortcutState2(Mutex::new(ptt)));
+            app.manage(ModeShortcutState(Mutex::new(mode_sc)));
             agent::http_server::start(app.handle().clone());
 
             if let Err(e) = tray::setup(app) {
@@ -182,7 +208,10 @@ pub fn run() {
             }
 
             if let Err(e) = app.global_shortcut().register(ptt) {
-                eprintln!("[voice] 全局快捷键注册失败: {e}");
+                eprintln!("[voice] PTT 快捷键注册失败: {e}");
+            }
+            if let Err(e) = app.global_shortcut().on_shortcut(mode_sc, mode_switch_handler) {
+                eprintln!("[voice] 模式切换快捷键注册失败: {e}");
             }
 
             // CosyVoice3 auto-start
@@ -222,7 +251,10 @@ pub fn run() {
             voice::voice_stop_and_transcribe,
             set_ptt_shortcut,
             get_ptt_shortcut,
+            set_mode_shortcut,
+            get_mode_shortcut,
             window_level::set_always_visible,
+            agent::list_agent_sessions,
             cosyvoice3::cosyvoice3_check_env,
             cosyvoice3::cosyvoice3_install,
             cosyvoice3::cosyvoice3_start,

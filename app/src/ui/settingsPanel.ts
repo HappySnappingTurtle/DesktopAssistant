@@ -10,6 +10,8 @@ export interface SettingsDeps {
   getHookEndpoint: () => Promise<string>;
   installClaudeHook: (dir: string) => Promise<string>;
   setAlwaysVisible: (enabled: boolean) => Promise<void>;
+  getModeShortcut: () => Promise<string>;
+  setModeShortcut: (s: string) => Promise<string>;
   cosyvoice3CheckEnv: () => Promise<Record<string, unknown>>;
   cosyvoice3Install: (hfMirror?: string) => Promise<void>;
   cosyvoice3Start: (port?: number) => Promise<string>;
@@ -44,6 +46,10 @@ export async function showSettings(deps: SettingsDeps) {
   let hasKey: boolean | null = null; // null=未检查
   let pttShortcut = "Alt+Space";
   try { pttShortcut = await deps.getPttShortcut(); } catch (e) { console.warn("[settings] getPttShortcut:", e); }
+  let modeShortcut = "Cmd+Shift+A";
+  try { modeShortcut = await deps.getModeShortcut(); } catch { /* */ }
+  const approvalRules = (cfg.approval_rules ?? {}) as Record<string, unknown>;
+  const reportLevel = (cfg.result_report_level as string) ?? "notify";
   const up = (cfg.user_profile ?? {}) as Record<string, string>;
   const ttsConf = (cfg.tts ?? {}) as Record<string, string>;
   const cv3Conf = ((cfg.tts as Record<string, unknown> ?? {}).cosyvoice3 ?? {}) as Record<string, unknown>;
@@ -175,6 +181,28 @@ export async function showSettings(deps: SettingsDeps) {
         <button id="st-ptt-record" style="padding:6px 12px;border-radius:8px;border:1px solid #555;background:transparent;color:#8cf;cursor:pointer;white-space:nowrap;font-size:13px">录制</button>
       </div>`)}
       <div id="st-ptt-hint" style="color:#777;font-size:12px;margin-top:4px">点击「录制」后按下你想用的快捷键组合</div>
+      ${field("模式切换（聊天↔指令）", `<div style="display:flex;gap:8px;align-items:center">
+        <input id="st-mode-sc" style="${inputStyle}flex:1;" value="${modeShortcut}" readonly>
+        <button id="st-mode-record" style="padding:6px 12px;border-radius:8px;border:1px solid #555;background:transparent;color:#8cf;cursor:pointer;white-space:nowrap;font-size:13px">录制</button>
+      </div>`)}
+      <div id="st-mode-hint" style="color:#777;font-size:12px;margin-top:4px">切换聊天模式和指令模式（语音转发给 Agent）</div>
+    </fieldset>
+
+    <fieldset style="border:1px solid #333;border-radius:10px;margin:10px 0;padding:8px 12px">
+      <legend style="color:#8ab">审批规则</legend>
+      ${field("🟢 自动批准（静默）", `<input id="st-rule-auto" style="${inputStyle}" value="${((approvalRules.auto as string[]) ?? []).join(", ")}" placeholder="Read, Grep, Glob">`)}
+      ${field("🔵 自动批准（播报）", `<input id="st-rule-notify" style="${inputStyle}" value="${((approvalRules.notify as string[]) ?? []).join(", ")}" placeholder="Write, Edit">`)}
+      ${field("🟡 语音确认", `<input id="st-rule-confirm" style="${inputStyle}" value="${((approvalRules.confirm as string[]) ?? []).join(", ")}" placeholder="Bash, WebFetch">`)}
+      ${field("🔴 强制键盘（正则，逗号分隔）", `<input id="st-rule-block" style="${inputStyle}" value="${((approvalRules.block_patterns as string[]) ?? []).join(", ")}" placeholder="rm -rf, sudo">`)}
+      <div style="color:#777;font-size:12px;margin-top:4px">工具名用逗号分隔。未列出的工具默认走「语音确认」。</div>
+    </fieldset>
+
+    <fieldset style="border:1px solid #333;border-radius:10px;margin:10px 0;padding:8px 12px">
+      <legend style="color:#8ab">结果播报</legend>
+      <label style="display:flex;gap:6px;align-items:center;margin:4px 0"><input type="radio" name="st-report" value="silent" ${reportLevel === "silent" ? "checked" : ""}> 🔇 静默（只显示气泡）</label>
+      <label style="display:flex;gap:6px;align-items:center;margin:4px 0"><input type="radio" name="st-report" value="notify" ${reportLevel === "notify" ? "checked" : ""}> 🔔 通知（语音播报"完成了"）</label>
+      <label style="display:flex;gap:6px;align-items:center;margin:4px 0"><input type="radio" name="st-report" value="summary" ${reportLevel === "summary" ? "checked" : ""}> 📋 摘要（LLM 总结输出内容并播报）</label>
+      <div style="color:#777;font-size:12px;margin-top:4px">摘要模式需要通过 assist run 启动 Agent 且配置 LLM</div>
     </fieldset>
 
     <fieldset style="border:1px solid #333;border-radius:10px;margin:10px 0;padding:8px 12px">
@@ -454,6 +482,40 @@ export async function showSettings(deps: SettingsDeps) {
     });
   }
 
+  // 模式切换快捷键录制（复用 PTT 的录制模式）
+  {
+    const modeInput = panel.querySelector("#st-mode-sc") as HTMLInputElement;
+    const modeBtn = panel.querySelector("#st-mode-record") as HTMLElement;
+    const modeHint = panel.querySelector("#st-mode-hint") as HTMLElement;
+    let modeRecording = false;
+    function modeHandleKey(e: KeyboardEvent) {
+      e.preventDefault(); e.stopPropagation();
+      if (["Alt","Control","Shift","Meta"].includes(e.key)) return;
+      const parts: string[] = [];
+      if (e.ctrlKey) parts.push("Ctrl");
+      if (e.altKey) parts.push("Alt");
+      if (e.shiftKey) parts.push("Shift");
+      if (e.metaKey) parts.push("Cmd");
+      const k = e.code.startsWith("Key") ? e.code.slice(3) : e.code.startsWith("Digit") ? e.code.slice(5) : e.key === " " ? "Space" : e.key;
+      parts.push(k);
+      modeInput.value = parts.join("+");
+      modeRecording = false;
+      modeBtn.textContent = "录制"; modeBtn.style.borderColor = "#555"; modeBtn.style.color = "#8cf";
+      modeHint.textContent = `✓ 已设置为 ${modeInput.value}`; modeHint.style.color = "#7a7";
+      window.removeEventListener("keydown", modeHandleKey, true);
+    }
+    modeBtn.addEventListener("click", () => {
+      if (modeRecording) {
+        modeRecording = false; modeBtn.textContent = "录制"; window.removeEventListener("keydown", modeHandleKey, true);
+        return;
+      }
+      modeRecording = true;
+      modeBtn.textContent = "取消"; modeBtn.style.borderColor = "#f55"; modeBtn.style.color = "#f88";
+      modeHint.textContent = "⏺ 请按下快捷键组合..."; modeHint.style.color = "#fc0";
+      window.addEventListener("keydown", modeHandleKey, true);
+    });
+  }
+
   // Hook 安装按钮
   panel.querySelector("#st-install-hook")!.addEventListener("click", async () => {
     const dir = (panel!.querySelector("#st-hookdir") as HTMLInputElement).value.trim();
@@ -506,6 +568,13 @@ export async function showSettings(deps: SettingsDeps) {
         } : {}),
       },
       active_character: v("#st-char"),
+      approval_rules: {
+        auto: v("#st-rule-auto").split(",").map((s: string) => s.trim()).filter(Boolean),
+        notify: v("#st-rule-notify").split(",").map((s: string) => s.trim()).filter(Boolean),
+        confirm: v("#st-rule-confirm").split(",").map((s: string) => s.trim()).filter(Boolean),
+        block_patterns: v("#st-rule-block").split(",").map((s: string) => s.trim()).filter(Boolean),
+      },
+      result_report_level: (panel!.querySelector('input[name="st-report"]:checked') as HTMLInputElement | null)?.value ?? "notify",
     };
     patch.user_profile = {
       nickname: v("#st-nickname") || "你",
@@ -526,7 +595,15 @@ export async function showSettings(deps: SettingsDeps) {
       try {
         await deps.setPttShortcut(newPtt);
       } catch (e) {
-        errors.push("快捷键设置失败: " + String(e));
+        errors.push("语音快捷键设置失败: " + String(e));
+      }
+    }
+    const newMode = v("#st-mode-sc");
+    if (newMode && newMode !== modeShortcut) {
+      try {
+        await deps.setModeShortcut(newMode);
+      } catch (e) {
+        errors.push("模式切换快捷键设置失败: " + String(e));
       }
     }
     try {

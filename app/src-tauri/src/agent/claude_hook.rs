@@ -47,6 +47,7 @@ pub fn parse_hook_payload(payload: &Value, now: u64) -> Option<AgentEvent> {
             session_id,
             cwd,
             summary: "会话回合完成".into(),
+            output_tail: None,
             ts: now,
         }),
         _ => None,

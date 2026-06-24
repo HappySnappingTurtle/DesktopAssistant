@@ -79,7 +79,12 @@ fn main() {
     }
 
     // 注册到伴侣（失败仅警告，不影响透传）
-    let reg = serde_json::json!({ "session_id": session_id, "inject_url": inject_url });
+    let reg = serde_json::json!({
+        "session_id": session_id,
+        "inject_url": inject_url,
+        "agent_type": agent_name,
+        "cwd": cwd,
+    });
     if let Err(e) = app_lib::agent::post_json(&format!("{COMPANION}/pty/register"), &reg) {
         eprintln!("[assist] 伴侣未连接（{e}），继续以透传模式运行");
     }
@@ -160,12 +165,19 @@ fn main() {
     if raw_ok {
         let _ = crossterm::terminal::disable_raw_mode();
     }
-    // 任务结束事件
+    // 注销会话
+    let _ = app_lib::agent::post_json(
+        &format!("{COMPANION}/pty/unregister"),
+        &serde_json::json!({ "session_id": session_id }),
+    );
+    // 任务结束事件（携带最近输出用于 summary 播报）
+    let tail = detector.lock().unwrap().get_tail();
     let done = AgentEvent::TaskCompleted {
         agent: agent_name,
         session_id,
         cwd,
         summary: format!("进程退出（code {status}）"),
+        output_tail: if tail.is_empty() { None } else { Some(tail) },
         ts: now_ms(),
     };
     let _ = app_lib::agent::post_json(

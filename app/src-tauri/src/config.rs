@@ -12,7 +12,27 @@ pub fn default_config() -> Value {
             "provider": "openai-compatible",
             "base_url": "http://127.0.0.1:11434/v1",
             "model": "qwen3:8b"
-        }
+        },
+        "approval_rules": {
+            "auto": ["Read", "Grep", "Glob", "LS", "ListDir", "SearchDir"],
+            "notify": ["Write", "Edit", "NotebookEdit", "CreateFile"],
+            "confirm": ["Bash", "WebFetch", "WebSearch", "BrowserAction"],
+            "block_patterns": [
+                "rm\\s+(-[a-z]*[rf][a-z]*\\s+)+",
+                "\\bsudo\\s",
+                "chmod\\s+777",
+                "git\\s+push\\b[^\\n]*--force",
+                "\\bcurl\\b[^|\\n]*\\|\\s*(ba|z)?sh",
+                "\\bwget\\b[^|\\n]*\\|\\s*(ba|z)?sh",
+                ">\\s*/etc/",
+                "gh\\s+repo\\s+delete",
+                "drop\\s+(table|database)",
+                "\\bmkfs\\b",
+                "\\bdd\\s+if="
+            ]
+        },
+        "result_report_level": "notify",
+        "mode_shortcut": "Cmd+Shift+A"
     })
 }
 

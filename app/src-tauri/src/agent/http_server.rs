@@ -1,6 +1,6 @@
 use super::claude_hook::parse_hook_payload;
+use super::session::SessionRegistry;
 use super::{now_ms, BusState};
-use std::collections::HashMap;
 use std::io::Read;
 use std::sync::Mutex;
 use tauri::Manager;
@@ -10,9 +10,6 @@ const MAX_BODY: usize = 64 * 1024;
 
 /// 实际监听端口（供安装向导/前端查询）
 pub struct EndpointState(pub Mutex<Option<u16>>);
-
-/// PTY 包装器会话注册表：session_id → inject URL
-pub struct PtyRegistry(pub Mutex<HashMap<String, String>>);
 
 pub fn start(app: tauri::AppHandle) {
     std::thread::spawn(move || {
@@ -94,21 +91,38 @@ pub fn start(app: tauri::AppHandle) {
                     struct Reg {
                         session_id: String,
                         inject_url: String,
+                        #[serde(default)]
+                        agent_type: Option<String>,
+                        #[serde(default)]
+                        cwd: Option<String>,
                     }
                     match serde_json::from_str::<Reg>(&body) {
                         Ok(reg) => {
-                            if let Some(r) = app.try_state::<PtyRegistry>() {
-                                r.0.lock()
-                                    .unwrap()
-                                    .insert(reg.session_id, reg.inject_url);
+                            if let Some(r) = app.try_state::<SessionRegistry>() {
+                                let agent = reg.agent_type.as_deref().unwrap_or("unknown");
+                                let cwd = reg.cwd.as_deref().unwrap_or("");
+                                r.0.lock().unwrap().register_pty(
+                                    &reg.session_id, agent, cwd, &reg.inject_url, now_ms(),
+                                );
                             }
                             respond(request, 200, "registered");
                         }
                         Err(e) => respond(request, 400, &format!("invalid: {e}")),
                     }
                 }
+                (tiny_http::Method::Post, "/pty/unregister") => {
+                    let mut body = String::new();
+                    let _ = request.as_reader().take(MAX_BODY as u64).read_to_string(&mut body);
+                    #[derive(serde::Deserialize)]
+                    struct Unreg { session_id: String }
+                    if let Ok(u) = serde_json::from_str::<Unreg>(&body) {
+                        if let Some(r) = app.try_state::<SessionRegistry>() {
+                            r.0.lock().unwrap().mark_ended(&u.session_id, now_ms());
+                        }
+                    }
+                    respond(request, 200, "ok");
+                }
                 (tiny_http::Method::Post, "/agent-event") => {
-                    // PTY 包装器等来源：直接投递 AgentEvent JSON
                     let mut body = String::new();
                     if request
                         .as_reader()
@@ -121,6 +135,9 @@ pub fn start(app: tauri::AppHandle) {
                     }
                     match serde_json::from_str::<super::event::AgentEvent>(&body) {
                         Ok(event) => {
+                            if let Some(r) = app.try_state::<SessionRegistry>() {
+                                r.0.lock().unwrap().touch(event.session_id(), now_ms());
+                            }
                             if let Some(bus) = app.try_state::<BusState>() {
                                 if let Ok(mut b) = bus.0.lock() {
                                     let r = b.publish(event);
@@ -150,6 +167,18 @@ pub fn start(app: tauri::AppHandle) {
                     };
                     match parse_hook_payload(&value, now_ms()) {
                         Some(event) => {
+                            if let Some(r) = app.try_state::<SessionRegistry>() {
+                                let agent = match &event {
+                                    super::event::AgentEvent::ApprovalNeeded { agent, .. }
+                                    | super::event::AgentEvent::IdlePrompt { agent, .. }
+                                    | super::event::AgentEvent::TaskCompleted { agent, .. }
+                                    | super::event::AgentEvent::AgentError { agent, .. } => agent.clone(),
+                                };
+                                let cwd = value.get("cwd").and_then(|v| v.as_str()).unwrap_or("");
+                                r.0.lock().unwrap().register_or_touch_hook(
+                                    event.session_id(), &agent, cwd, now_ms(),
+                                );
+                            }
                             if let Some(bus) = app.try_state::<BusState>() {
                                 if let Ok(mut b) = bus.0.lock() {
                                     let r = b.publish(event);

@@ -23,6 +23,8 @@ pub enum AgentEvent {
         session_id: String,
         cwd: String,
         summary: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        output_tail: Option<String>,
         ts: u64,
     },
     AgentError {
@@ -53,7 +55,7 @@ impl AgentEvent {
                 format!("idle|{agent}|{session_id}|{prompt_text}")
             }
             AgentEvent::TaskCompleted { agent, session_id, summary, .. } => {
-                format!("done|{agent}|{session_id}|{summary}")
+                format!("done|{agent}|{session_id}|{}", &summary[..summary.len().min(50)])
             }
             AgentEvent::AgentError { agent, session_id, message, .. } => {
                 format!("error|{agent}|{session_id}|{message}")

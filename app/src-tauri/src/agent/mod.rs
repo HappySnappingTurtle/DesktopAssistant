@@ -3,6 +3,7 @@ pub mod claude_hook;
 pub mod detector;
 pub mod event;
 pub mod http_server;
+pub mod session;
 
 use bus::{EventBus, EventSink, PublishResult};
 use event::AgentEvent;
@@ -88,17 +89,24 @@ pub fn install_claude_hook(
 pub fn pty_inject(
     session_id: String,
     keys: String,
-    registry: tauri::State<'_, http_server::PtyRegistry>,
+    registry: tauri::State<'_, session::SessionRegistry>,
 ) -> Result<(), String> {
     let url = registry
         .0
         .lock()
         .map_err(|e| e.to_string())?
-        .get(&session_id)
-        .cloned()
-        .ok_or(format!("未注册的 PTY 会话: {session_id}"))?;
+        .inject_url(&session_id)
+        .ok_or(format!("会话 {session_id} 无 inject_url（Hook 模式不支持注入）"))?;
     post_json(&url, &serde_json::json!({ "keys": keys }))
         .map_err(|e| format!("注入失败: {e}"))
+}
+
+#[tauri::command]
+pub fn list_agent_sessions(
+    registry: tauri::State<'_, session::SessionRegistry>,
+) -> Result<Vec<session::AgentSession>, String> {
+    let inner = registry.0.lock().map_err(|e| e.to_string())?;
+    Ok(inner.active_sessions().into_iter().cloned().collect())
 }
 
 #[tauri::command]

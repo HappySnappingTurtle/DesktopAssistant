@@ -462,6 +462,8 @@ async function setup() {
       getHookEndpoint: () => invoke("hook_endpoint"),
       installClaudeHook: (dir) => invoke("install_claude_hook", { projectDir: dir }),
       setAlwaysVisible: (enabled) => invoke("set_always_visible", { enabled }),
+      getModeShortcut: () => invoke("get_mode_shortcut"),
+      setModeShortcut: (s) => invoke("set_mode_shortcut", { shortcutStr: s }),
       cosyvoice3CheckEnv: () => invoke("cosyvoice3_check_env"),
       cosyvoice3Install: (hfMirror) => invoke("cosyvoice3_install", { hfMirror }),
       cosyvoice3Start: (port) => invoke("cosyvoice3_start", { port }),
@@ -521,6 +523,10 @@ async function setup() {
   const router = createApprovalRouter({
     inject: (sessionId, keys) => invoke("pty_inject", { sessionId, keys }),
     onChat: (text) => void chat(text),
+    onForwardToAgent: async (sessionId, text) => {
+      await invoke("pty_inject", { sessionId, keys: text + "\r" });
+      showBubble(`📤 已发送: ${text.slice(0, 30)}${text.length > 30 ? "…" : ""}`);
+    },
     onFeedback: (speech, mood) => {
       showBubble(speech);
       renderer?.setExpression(
@@ -529,17 +535,84 @@ async function setup() {
       tts.enqueue({ text: speech, urgency: "high" });
     },
     mode: () => approvalMode,
+    rules: () => {
+      const r = (config.approval_rules ?? {}) as Record<string, unknown>;
+      return {
+        auto: (r.auto as string[]) ?? [],
+        notify: (r.notify as string[]) ?? [],
+        confirm: (r.confirm as string[]) ?? [],
+        block_patterns: (r.block_patterns as string[]) ?? [],
+      };
+    },
   });
 
   // ── Agent 事件 → 行为引擎 ───────────────────────────────
-  subscribeAgentEvents((e) => {
+  subscribeAgentEvents(async (e) => {
     console.log("[agent]", e);
     router.onAgentEvent(e);
+
+    if (e.kind === "task_completed") {
+      const reportLevel = (config.result_report_level as string) ?? "notify";
+      const agentName = e.agent === "claude-code" ? "Claude" : e.agent;
+
+      if (reportLevel === "silent") {
+        showBubble(`✅ ${agentName} 完成`);
+        void renderer?.playMotion("cheer");
+      } else if (reportLevel === "summary" && e.output_tail) {
+        showBubble(`✅ ${agentName} 完成，正在生成摘要…`);
+        void renderer?.playMotion("cheer");
+        renderer?.setExpression("happy");
+        try {
+          const summary = await invoke<string>("llm_chat", {
+            system: "你是简洁的工作总结助手。用一句话（不超过30字）总结下面这段 Agent 的工作输出。只返回总结文本，不加任何前缀。",
+            messages: [{ role: "user", content: e.output_tail.slice(-1500) }],
+          });
+          const clean = summary.replace(/^["']|["']$/g, "").trim();
+          showBubble(`✅ ${clean}`);
+          tts.enqueue({ text: `${agentName}的工作：${clean}`, urgency: "med" });
+        } catch {
+          tts.enqueue({ text: `${agentName}完成了任务`, urgency: "low" });
+        }
+      } else {
+        showBubble(`✅ ${agentName} 完成了任务`);
+        void renderer?.playMotion("cheer");
+        renderer?.setExpression("happy");
+        tts.enqueue({ text: `${agentName}完成了任务`, urgency: "low" });
+      }
+      return;
+    }
+
     const action = mapEvent(e);
     showBubble(action.bubble);
     void renderer?.playMotion(action.motion);
     if (action.expression) renderer?.setExpression(action.expression);
     if (action.ttsText) tts.enqueue({ text: action.ttsText, urgency: action.urgency });
+  });
+
+  // ── 模式切换（聊天↔指令） ────────────────────────────────
+  void listen("voice://mode_switch", async () => {
+    if (router.routeMode === "agent") {
+      router.setMode("chat", null);
+      showBubble("💬 聊天模式");
+      tts.enqueue({ text: "切换到聊天模式", urgency: "med" });
+    } else {
+      try {
+        const sessions = await invoke<Array<{ session_id: string; agent_label: string; cwd: string }>>("list_agent_sessions");
+        if (sessions.length === 0) {
+          showBubble("没有在运行的 Agent");
+          tts.enqueue({ text: "没有在运行的 Agent", urgency: "med" });
+        } else {
+          const s = sessions[0];
+          const proj = s.cwd.split("/").pop() || s.cwd;
+          router.setMode("agent", s.session_id);
+          showBubble(`🔧 ${s.agent_label} (${proj})`);
+          tts.enqueue({ text: `切换到指令模式，目标${s.agent_label}`, urgency: "med" });
+        }
+      } catch (e) {
+        showBubble("获取 Agent 会话失败");
+        console.warn("[mode_switch]", e);
+      }
+    }
   });
 
   // ── 语音管线状态 ────────────────────────────────────────

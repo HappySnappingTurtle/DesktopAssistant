@@ -108,6 +108,10 @@ impl PromptDetector {
 
         Some(DetectedPrompt { prompt_text, suggested_keys })
     }
+
+    pub fn get_tail(&self) -> String {
+        self.tail.clone()
+    }
 }
 
 #[cfg(test)]
