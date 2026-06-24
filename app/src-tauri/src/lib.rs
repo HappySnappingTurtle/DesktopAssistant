@@ -117,6 +117,9 @@ fn get_mode_shortcut() -> String {
 #[tauri::command]
 fn set_mode_shortcut(app: tauri::AppHandle, shortcut_str: String) -> Result<String, String> {
     let new_sc = parse_shortcut(&shortcut_str)?;
+    if !shortcut_str.contains('+') {
+        return Err("模式切换快捷键必须包含修饰键（Cmd/Ctrl/Alt/Shift）".into());
+    }
     let state = app.state::<ModeShortcutState>();
     let mut current = state.0.lock().map_err(|e| e.to_string())?;
     let gs = app.global_shortcut();

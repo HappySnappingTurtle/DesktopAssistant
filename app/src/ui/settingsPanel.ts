@@ -31,6 +31,7 @@ const VOICE_PRESETS = [
 let panel: HTMLElement | null = null;
 
 export function hideSettings() {
+  document.getElementById("settings-overlay")?.remove();
   panel?.remove();
   panel = null;
 }
@@ -57,12 +58,21 @@ export async function showSettings(deps: SettingsDeps) {
   try { hookEndpoint = await deps.getHookEndpoint(); } catch { /* not running */ }
   console.log("[settings] data loaded, ptt:", pttShortcut, "hook:", hookEndpoint);
 
+  // 遮罩层
+  const overlay = document.createElement("div");
+  overlay.id = "settings-overlay";
+  overlay.style.cssText =
+    "position:fixed;inset:0;z-index:9980;background:rgba(0,0,0,.6);";
+  overlay.addEventListener("click", hideSettings);
+  document.body.appendChild(overlay);
+
   panel = document.createElement("div");
   panel.id = "settings";
   panel.style.cssText =
-    "position:fixed;inset:12px;z-index:9990;border-radius:16px;overflow-y:auto;" +
-    "background:rgba(24,24,30,.97);color:#eee;padding:16px 18px;" +
-    "font:13px -apple-system,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.5);";
+    "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);" +
+    "width:420px;max-height:85vh;z-index:9990;border-radius:18px;overflow-y:auto;" +
+    "background:rgba(24,24,30,.98);color:#eee;padding:20px 22px;" +
+    "font:13px -apple-system,sans-serif;box-shadow:0 16px 64px rgba(0,0,0,.7);";
 
   const field = (label: string, input: string) =>
     `<label style="display:block;margin:8px 0 2px;color:#9aa">${label}</label>${input}`;
